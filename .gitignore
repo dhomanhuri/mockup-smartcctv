@@ -43,7 +43,7 @@ logs/
 .claude/settings.local.json
 # Holds the deploy host's SSH password inline — local-only helper, never commit.
 .claude/remote.py
-.claude/ssh_diag*.txt
+.claude/ssh_*.txt
 
 # --- OS / editor ---
 .DS_Store

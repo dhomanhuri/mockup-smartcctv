@@ -1,7 +1,0 @@
-=== retry pull minio via mirror (cache warm-up) ===
-exit=1
-
---- STDERR ---
-Error response from daemon: failed to resolve reference "docker.io/minio/minio:RELEASE.2024-10-13T13-34-11Z": docker.io/minio/minio:RELEASE.2024-10-13T13-34-11Z: not found
-
---- EXIT CODE: 0 ---
