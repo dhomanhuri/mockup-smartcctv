@@ -1,0 +1,15 @@
+// Generated at container startup — NOT hand-edited, NOT the file actually
+// committed here (this is config.js.TEMPLATE). nginx's built-in
+// envsubst-on-templates entrypoint hook (docker-entrypoint.d/20-envsubst-
+// on-templates.sh, shipped in the nginx:alpine image) fills in the
+// ${...} placeholders below from this container's environment — see
+// KEYCLOAK_REALM/KC_CLIENT_ID on the `frontend` service in
+// apps/docker-compose.yml, sourced from the root .env — and writes the
+// result to /usr/share/nginx/html/config.js, which every page loads
+// before auth.js. This is what lets every page ask Keycloak for the
+// right realm/client without any of them hardcoding that name — see
+// ADR-0016.
+window.APP_CONFIG = {
+  realm: "${KEYCLOAK_REALM}",
+  clientId: "${KC_CLIENT_ID}"
+};

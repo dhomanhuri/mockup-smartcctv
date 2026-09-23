@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Smart CCTV AI — Admin Dashboard</title>
+<link rel="icon" href="/pertamina-ep-logo.jpg" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/styles.css">
+<script src="/config.js"></script>
+<script src="/auth.js"></script>
+<style>
+  .denied{ max-width:480px; margin:4rem auto; text-align:center; }
+  .denied h2{ font-size:1.2rem; margin-bottom:0.5rem; }
+  .denied p{ color:var(--text-muted); margin-bottom:1.2rem; }
+  .role-select{
+    width:100%; padding:0.5rem 0.65rem; border:1px solid var(--border); border-radius:7px;
+    background:var(--bg); color:var(--text); font-size:0.9rem;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <img src="/pertamina-ep-logo.jpg" alt="Pertamina EP" />
+    <div class="divider"></div>
+    <div>
+      <h1>Smart CCTV AI <span class="portal-pill admin">Admin</span></h1>
+      <div class="sub">Manajemen User Platform</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <a class="link-btn" href="/">Kembali ke Dashboard</a>
+    <div class="user-chip">
+      <div class="avatar" id="userAvatar">–</div>
+      <span class="name" id="userName">–</span>
+      <button class="logout-btn" id="logoutBtn">Keluar</button>
+    </div>
+  </div>
+</header>
+
+<main id="mainContent" hidden>
+  <section class="panel">
+    <div class="panel-head">
+      <h2>User Platform</h2>
+      <button class="action-btn" id="openAddUser">+ Tambah User</button>
+    </div>
+    <div class="panel-body table-wrap">
+      <table>
+        <thead>
+          <tr><th>Username</th><th>Nama</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr>
+        </thead>
+        <tbody id="userTable"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>Smart CCTV AI &middot; Pertamina EP &middot; Admin Dashboard — user yang dibuat di sini langsung terdaftar di Keycloak realm <span class="mono" id="footerRealmName"></span></footer>
+</main>
+
+<div id="deniedBox" hidden>
+  <main>
+    <div class="denied">
+      <h2>Akses ditolak</h2>
+      <p>Akun ini tidak punya role <span class="mono">admin</span> di realm ini, jadi tidak bisa membuka Admin Dashboard.</p>
+      <a class="btn-primary" href="/" style="text-decoration:none; display:inline-block;">Kembali ke Dashboard</a>
+    </div>
+  </main>
+</div>
+
+<div class="modal-overlay" id="addUserModal" hidden>
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Tambah User</h3>
+      <button class="modal-close" id="closeModal">&times;</button>
+    </div>
+    <form id="userForm">
+      <div class="modal-body">
+        <div class="field">
+          <label for="uUsername">Username</label>
+          <input type="text" id="uUsername" required placeholder="mis. operator2" />
+        </div>
+        <div class="field">
+          <label for="uFirstName">Nama Depan</label>
+          <input type="text" id="uFirstName" placeholder="mis. Budi" />
+        </div>
+        <div class="field">
+          <label for="uLastName">Nama Belakang</label>
+          <input type="text" id="uLastName" placeholder="mis. Santoso" />
+        </div>
+        <div class="field">
+          <label for="uEmail">Email</label>
+          <input type="email" id="uEmail" placeholder="budi.santoso@pertamina-ep.local" />
+        </div>
+        <div class="field">
+          <label for="uRole">Role</label>
+          <select id="uRole" class="role-select">
+            <option value="operator">Operator — memantau &amp; acknowledge pelanggaran</option>
+            <option value="supervisor">Supervisor — assign &amp; menutup kasus</option>
+            <option value="admin">Admin — kelola user &amp; pengaturan sistem</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="uPassword">Password Awal</label>
+          <input type="text" id="uPassword" required placeholder="Password sementara" />
+        </div>
+        <div class="field checkbox-row">
+          <input type="checkbox" id="uTemporary" checked />
+          <label for="uTemporary">Wajib ganti password saat login pertama</label>
+        </div>
+        <div class="form-error" id="formError">Gagal membuat user.</div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" id="cancelModal">Batal</button>
+        <button type="submit" class="btn-primary">Buat User</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+const Auth = createAuthClient({ realm: window.APP_CONFIG.realm, clientId: window.APP_CONFIG.clientId, storageKey: "vg_tokens" });
+
+function initials(name){
+  return (name || "?").split(/[.\s]/).filter(Boolean).slice(0,2).map(s => s[0].toUpperCase()).join("");
+}
+function hasAdminRole(){
+  try{
+    const payload = JSON.parse(atob(Auth.accessToken.split(".")[1]));
+    return (payload.realm_access?.roles || []).includes("admin");
+  }catch(e){ return false; }
+}
+
+function userRowHtml(u){
+  const roles = u.realmRoles || [];
+  const ROLE_BADGE = { admin: "warning", supervisor: "success", operator: "muted" };
+  const roleBadges = roles.filter(r => r in ROLE_BADGE)
+    .map(r => `<span class="badge ${ROLE_BADGE[r]}">${r}</span>`).join(" ");
+  return `
+    <tr>
+      <td class="mono">${u.username}</td>
+      <td>${[u.firstName, u.lastName].filter(Boolean).join(" ") || "-"}</td>
+      <td>${u.email || "-"}</td>
+      <td>${roleBadges || "-"}</td>
+      <td>${u.enabled ? `<span class="badge success">Aktif</span>` : `<span class="badge muted">Nonaktif</span>`}</td>
+      <td><button class="link-btn" onclick="toggleUser('${u.id}', ${!u.enabled}, this)">${u.enabled ? "Nonaktifkan" : "Aktifkan"}</button></td>
+    </tr>`;
+}
+
+async function loadUsers(){
+  const res = await Auth.apiFetch("/api/admin/users");
+  const users = await res.json();
+  document.getElementById("userTable").innerHTML = users.map(userRowHtml).join("")
+    || `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">Belum ada user</td></tr>`;
+}
+
+async function toggleUser(id, enabled, btn){
+  btn.disabled = true;
+  await Auth.apiFetch(`/api/admin/users/${id}/enabled?enabled=${enabled}`, { method:"PUT" });
+  loadUsers();
+}
+
+const modal = document.getElementById("addUserModal");
+function openModal(){ modal.hidden = false; document.getElementById("uUsername").focus(); }
+function closeModalFn(){
+  modal.hidden = true;
+  document.getElementById("userForm").reset();
+  document.getElementById("formError").classList.remove("show");
+}
+document.getElementById("openAddUser").addEventListener("click", openModal);
+document.getElementById("closeModal").addEventListener("click", closeModalFn);
+document.getElementById("cancelModal").addEventListener("click", closeModalFn);
+modal.addEventListener("click", (e) => { if (e.target === modal) closeModalFn(); });
+
+document.getElementById("userForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const payload = {
+    username: document.getElementById("uUsername").value.trim(),
+    first_name: document.getElementById("uFirstName").value.trim() || null,
+    last_name: document.getElementById("uLastName").value.trim() || null,
+    email: document.getElementById("uEmail").value.trim() || null,
+    role: document.getElementById("uRole").value,
+    password: document.getElementById("uPassword").value,
+    temporary_password: document.getElementById("uTemporary").checked,
+  };
+  const errEl = document.getElementById("formError");
+  try{
+    const res = await Auth.apiFetch("/api/admin/users", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok){
+      const detail = await res.json().catch(()=>({}));
+      errEl.textContent = detail.detail || "Gagal membuat user.";
+      errEl.classList.add("show");
+      return;
+    }
+    closeModalFn();
+    await loadUsers();
+  }catch(err){
+    errEl.textContent = "Tidak bisa menghubungi server.";
+    errEl.classList.add("show");
+  }
+});
+
+document.getElementById("logoutBtn").addEventListener("click", () => Auth.logout());
+
+(async function init(){
+  document.getElementById("footerRealmName").textContent = window.APP_CONFIG.realm;
+  const ok = await Auth.init();
+  if (!ok) return;
+
+  if (!hasAdminRole()){
+    document.getElementById("deniedBox").hidden = false;
+    return;
+  }
+
+  document.getElementById("userName").textContent = Auth.username || "Admin";
+  document.getElementById("userAvatar").textContent = initials(Auth.username);
+  document.getElementById("mainContent").hidden = false;
+  await loadUsers();
+})();
+</script>
+</body>
+</html>

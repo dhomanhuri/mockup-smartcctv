@@ -1,0 +1,21 @@
+# Root orchestrator — combines the two domain-scoped compose files below
+# into one project so the whole stack still comes up with a single
+# `docker compose up -d --build` run from here. Split this way so infra
+# (databases, identity, streaming, reverse proxy) and apps (the actual
+# product: backend/frontend/inference) can be read and changed
+# independently without one 250-line file mixing both concerns.
+#
+# See infra/docker-compose.yml and apps/docker-compose.yml for the
+# services themselves; .env at this same root supplies every ${VAR} used
+# in both.
+#
+# `name:` pins the Compose project name (container/volume/network name
+# prefix) to the product slug regardless of what the checkout folder on
+# disk happens to be called — see ADR-0016. Without it, Compose derives
+# the project name from the folder's basename, which is exactly the kind
+# of hardcoded-by-accident coupling ADR-0016 removes.
+name: smart-cctv-ai
+
+include:
+  - infra/docker-compose.yml
+  - apps/docker-compose.yml

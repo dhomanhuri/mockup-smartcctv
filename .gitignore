@@ -1,0 +1,52 @@
+# --- Secrets / environment ---
+# .env holds live demo credentials (Postgres, Keycloak admin, MinIO, SMTP).
+# Never commit it. Use .env.example as the template instead.
+.env
+.env.*
+!.env.example
+
+# Generated at container start from config.js.template
+apps/frontend/config.js
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+venv/
+.venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Node ---
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- Docker / runtime volumes ---
+data/
+volumes/
+pgdata/
+minio-data/
+recordings/
+*.pid
+
+# --- Logs ---
+logs/
+*.log
+
+# --- Local tooling ---
+.claude/settings.local.json
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*~

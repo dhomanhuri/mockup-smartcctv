@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Laporan &amp; Analitik — Smart CCTV AI</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="styles.css" />
+<style>.chart-label{ font-size:11px; fill:var(--text-muted); font-family:"Inter",sans-serif; }</style>
+</head>
+<body>
+<header><div id="shell-header"></div></header>
+<div class="app-layout">
+  <nav class="sidebar" id="shell-sidebar"></nav>
+  <main>
+    <div class="page-head" style="display:flex;align-items:flex-start;justify-content:space-between;">
+      <div>
+        <h2>Laporan &amp; Analitik</h2>
+        <p>Tren pelanggaran dan performa penanganan kasus.</p>
+      </div>
+      <div style="display:flex;gap:0.6rem;">
+        <button class="btn-secondary" id="downloadExecutive">Unduh Ringkasan Eksekutif</button>
+        <button class="btn-primary" id="downloadDetail">Unduh Laporan Detail</button>
+      </div>
+    </div>
+
+    <div class="filter-row">
+      <div class="range-pills">
+        <div class="range-pill active" data-quick="7">7 Hari</div>
+        <div class="range-pill" data-quick="30">30 Hari</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:0.5rem;">
+        <span style="font-size:0.82rem;color:var(--text-muted);">Dari</span>
+        <input type="date" id="dateFrom" class="date-input" />
+        <span style="font-size:0.82rem;color:var(--text-muted);">s/d</span>
+        <input type="date" id="dateTo" class="date-input" />
+        <button class="btn-secondary" id="applyRange">Terapkan</button>
+      </div>
+      <span id="rangeError" style="font-size:0.8rem;color:var(--critical);display:none;">Rentang maksimal 31 hari.</span>
+    </div>
+
+    <div class="kpi-grid" style="grid-template-columns:repeat(5,1fr);">
+      <div class="kpi-tile"><div class="label" id="kpiTotalLabel">Total Pelanggaran</div><div class="value" id="kpiTotal">–</div></div>
+      <div class="kpi-tile"><div class="label">Rata-rata / Hari</div><div class="value" id="kpiAvgDay">–</div></div>
+      <div class="kpi-tile"><div class="label">Dijadikan Kasus</div><div class="value" id="kpiCaseTotal">–</div></div>
+      <div class="kpi-tile"><div class="label">Kasus Selesai</div><div class="value success" id="kpiCompletion">–</div></div>
+      <div class="kpi-tile"><div class="label">Rata-rata Waktu Respons</div><div class="value" id="kpiResponse">–</div></div>
+    </div>
+    <p style="font-size:0.78rem; color:var(--text-muted); margin:-1rem 0 1.5rem;">"Total Pelanggaran" = semua deteksi AI. "Dijadikan Kasus", "Kasus Selesai", dan "Rata-rata Waktu Respons" hanya menghitung alert yang dipromosikan jadi Case Violation.</p>
+
+    <section class="panel" style="padding:1.25rem 1.5rem;margin-bottom:1.25rem;">
+      <h2 style="font-size:0.92rem;font-weight:600;margin:0 0 1rem;">Distribusi per Kategori</h2>
+      <div class="split-bar" id="splitBar"></div>
+      <div class="category-legend">
+        <div class="row">
+          <div class="swatch" style="background:#FBF1DF;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#B57712" stroke-width="1.8"><path d="M4 15.5V15a8 8 0 0 1 16 0v0.5"/><rect x="3" y="15.5" width="18" height="3" rx="1.2"/><path d="M12 6.5v2.2"/></svg></div>
+          <div><div class="title">APD Detection</div><div class="sub"><span class="mono" id="apdTotal" style="font-weight:700;color:var(--text);">–</span> kasus &middot; <span id="apdPct">–</span> dari total</div></div>
+        </div>
+        <div class="row">
+          <div class="swatch" style="background:#FBE3E3;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#B8021F" stroke-width="1.8"><rect x="2" y="6" width="11" height="10" rx="1"/><path d="M13 10h4l3 3v3h-7z"/><circle cx="6.5" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/></svg></div>
+          <div><div class="title">Vehicle Violation</div><div class="sub"><span class="mono" id="vehicleTotal" style="font-weight:700;color:var(--text);">–</span> kasus &middot; <span id="vehiclePct">–</span> dari total</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" style="padding:1.25rem 1.5rem;margin-bottom:1.25rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+        <h2 style="font-size:0.92rem;font-weight:600;margin:0;">Tren Pelanggaran</h2>
+        <div style="display:flex;gap:1.2rem;">
+          <span style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--text-muted);"><span style="width:9px;height:9px;border-radius:2px;background:#B57712;display:inline-block;"></span>APD Detection</span>
+          <span style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--text-muted);"><span style="width:9px;height:9px;border-radius:2px;background:#B8021F;display:inline-block;"></span>Vehicle Violation</span>
+        </div>
+      </div>
+      <svg id="trendChart" viewBox="0 0 900 240" width="100%" style="display:block;overflow:visible;"></svg>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Pelanggaran per Kamera &amp; Lokasi</h2></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Kamera</th><th>Lokasi</th><th>Kategori</th><th style="width:260px;">Jumlah</th></tr></thead>
+          <tbody id="cameraTable"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script src="shell.js"></script>
+<script>
+const Auth = createAuthClient({ realm: window.APP_CONFIG.realm, clientId: window.APP_CONFIG.clientId, storageKey: "vg_tokens" });
+const MAX_RANGE_DAYS = 31;
+
+function isoDate(d){ return d.toISOString().slice(0, 10); }
+function fmtShort(iso){ return new Date(iso + "T00:00:00").toLocaleDateString("id-ID", { day:"2-digit", month:"short" }); }
+
+let rangeStart, rangeEnd; // "YYYY-MM-DD"
+
+function setRange(start, end){
+  rangeStart = start;
+  rangeEnd = end;
+  document.getElementById("dateFrom").value = start;
+  document.getElementById("dateTo").value = end;
+}
+
+// Default: last 7 days, inclusive of today.
+{
+  const today = new Date();
+  const weekAgo = new Date(today);
+  weekAgo.setDate(weekAgo.getDate() - 6);
+  setRange(isoDate(weekAgo), isoDate(today));
+}
+
+// Same bar-chart builder as before, but the x-axis now shows day-of-month
+// (not day-name) and thins out labels past ~10 bars — a date range can be
+// anywhere from 1 to 31 days (ADR-0017), and day names stop being legible
+// once there are more than a handful of bars.
+function buildTrendSvg(daily){
+  const W = 900, H = 240, padL = 40, padR = 20, padB = 50, padT = 10;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const maxVal = Math.max(1, ...daily.flatMap(d => [d.apd, d.vehicle]));
+  const niceMax = Math.ceil(maxVal / 5) * 5 || 5;
+  const n = daily.length || 1;
+  const groupW = plotW / n;
+  const barW = Math.min(22, groupW * 0.32);
+  const stride = n <= 10 ? 1 : (n <= 16 ? 2 : (n <= 24 ? 3 : 5));
+
+  let svg = "";
+  for (let i = 0; i <= 4; i++){
+    const y = padT + plotH - (plotH * i / 4);
+    svg += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="var(--border)" stroke-width="1"/>`;
+    svg += `<text class="chart-label" x="${padL - 8}" y="${y + 4}" text-anchor="end">${Math.round(niceMax * i / 4)}</text>`;
+  }
+  daily.forEach((d, i) => {
+    const cx = padL + groupW * i + groupW / 2;
+    const apdH = (d.apd / niceMax) * plotH;
+    const vehH = (d.vehicle / niceMax) * plotH;
+    svg += `<rect x="${cx - barW - 2}" y="${padT + plotH - apdH}" width="${barW}" height="${apdH}" rx="3" fill="#B57712"/>`;
+    svg += `<rect x="${cx + 2}" y="${padT + plotH - vehH}" width="${barW}" height="${vehH}" rx="3" fill="#B8021F"/>`;
+    if (i % stride === 0){
+      svg += `<text class="chart-label" x="${cx}" y="${H - padB + 18}" text-anchor="middle">${new Date(d.date).getDate()}</text>`;
+    }
+  });
+  return svg;
+}
+
+function cameraRowHtml(c, maxCount){
+  const color = c.category === "vehicle" ? "#B8021F" : "#B57712";
+  const soft = c.category === "vehicle" ? "#FBE3E3" : "#FBF1DF";
+  const pct = Math.max(4, Math.round((c.count / maxCount) * 100));
+  return `
+    <tr>
+      <td style="font-weight:600;">${c.camera_name}</td>
+      <td style="color:var(--text-muted);">${c.location || "-"}</td>
+      <td><span class="badge" style="background:${soft};color:${color};">${c.category === "vehicle" ? "Vehicle" : "APD"}</span></td>
+      <td>
+        <div class="chart-bar-row">
+          <div class="chart-bar-track"><div class="chart-bar-fill" style="width:${pct}%;background:${color};"></div></div>
+          <span class="mono" style="font-size:0.85rem;font-weight:600;width:1.8rem;text-align:right;">${c.count}</span>
+        </div>
+      </td>
+    </tr>`;
+}
+
+async function loadReport(){
+  const res = await Auth.apiFetch(`/api/reports/summary?start=${rangeStart}&end=${rangeEnd}`);
+  if (!res.ok){
+    const detail = await res.json().catch(() => ({}));
+    document.getElementById("rangeError").textContent = detail.detail || "Gagal memuat laporan untuk rentang ini.";
+    document.getElementById("rangeError").style.display = "inline";
+    return;
+  }
+  document.getElementById("rangeError").style.display = "none";
+  const r = await res.json();
+
+  const rangeLabel = r.start === r.end ? fmtShort(r.start) : `${fmtShort(r.start)} – ${fmtShort(r.end)}`;
+  document.getElementById("kpiTotalLabel").textContent = `Total Pelanggaran (${rangeLabel})`;
+  document.getElementById("kpiTotal").textContent = r.total;
+  document.getElementById("kpiAvgDay").textContent = r.avg_per_day;
+  document.getElementById("kpiCaseTotal").textContent = r.case_total;
+  document.getElementById("kpiCompletion").textContent = r.case_total ? `${Math.round(r.completion_rate * 100)}%` : "–";
+  document.getElementById("kpiResponse").innerHTML = r.avg_response_minutes != null
+    ? `${Math.round(r.avg_response_minutes)}<span class="unit"> mnt</span>` : "–";
+
+  const apdPct = r.total ? Math.round((r.apd_total / r.total) * 100) : 0;
+  const vehPct = 100 - apdPct;
+  document.getElementById("splitBar").innerHTML = r.total
+    ? `<div style="width:${apdPct}%;background:#B57712;"></div><div style="width:${vehPct}%;background:#B8021F;"></div>`
+    : `<div style="width:100%;background:var(--surface-2);"></div>`;
+  document.getElementById("apdTotal").textContent = r.apd_total;
+  document.getElementById("vehicleTotal").textContent = r.vehicle_total;
+  document.getElementById("apdPct").textContent = `${apdPct}%`;
+  document.getElementById("vehiclePct").textContent = `${vehPct}%`;
+
+  document.getElementById("trendChart").innerHTML = buildTrendSvg(r.daily);
+
+  const maxCount = Math.max(1, ...r.by_camera.map(c => c.count));
+  document.getElementById("cameraTable").innerHTML = r.by_camera.map(c => cameraRowHtml(c, maxCount)).join("")
+    || `<tr><td colspan="4" style="text-align:center;color:var(--text-muted);">Belum ada data</td></tr>`;
+}
+
+function downloadReport(kind){
+  // A plain <a> can't attach an Authorization header, so the export
+  // endpoint accepts ?token= too — same pattern as the snapshot endpoint.
+  const url = `/api/reports/export?kind=${kind}&start=${rangeStart}&end=${rangeEnd}&token=${encodeURIComponent(Auth.accessToken)}`;
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+document.getElementById("downloadExecutive").addEventListener("click", () => downloadReport("executive"));
+document.getElementById("downloadDetail").addEventListener("click", () => downloadReport("detail"));
+
+function applyRange(start, end){
+  const errEl = document.getElementById("rangeError");
+  if (!start || !end || start > end){
+    errEl.textContent = "Tanggal \"Dari\" harus sebelum atau sama dengan \"Sampai\".";
+    errEl.style.display = "inline";
+    return;
+  }
+  const spanDays = Math.round((new Date(end) - new Date(start)) / 86400000) + 1;
+  if (spanDays > MAX_RANGE_DAYS){
+    errEl.textContent = `Rentang maksimal ${MAX_RANGE_DAYS} hari (dipilih ${spanDays} hari).`;
+    errEl.style.display = "inline";
+    return;
+  }
+  errEl.style.display = "none";
+  document.querySelectorAll(".range-pill").forEach(p => p.classList.remove("active"));
+  setRange(start, end);
+  loadReport();
+}
+
+document.querySelectorAll(".range-pill[data-quick]").forEach(pill => {
+  pill.addEventListener("click", () => {
+    document.querySelectorAll(".range-pill").forEach(p => p.classList.remove("active"));
+    pill.classList.add("active");
+    const today = new Date();
+    const back = new Date(today);
+    back.setDate(back.getDate() - (Number(pill.dataset.quick) - 1));
+    setRange(isoDate(back), isoDate(today));
+    loadReport();
+  });
+});
+
+document.getElementById("applyRange").addEventListener("click", () => {
+  applyRange(document.getElementById("dateFrom").value, document.getElementById("dateTo").value);
+});
+
+(async () => {
+  try {
+    const today = isoDate(new Date());
+    document.getElementById("dateFrom").max = today;
+    document.getElementById("dateTo").max = today;
+    if (!(await Auth.init())) return;
+    Shell.mount({ active: "reports", auth: Auth });
+    await loadReport();
+  } catch (err) { Shell.showFatalError(err); }
+})();
+</script>
+</body>
+</html>

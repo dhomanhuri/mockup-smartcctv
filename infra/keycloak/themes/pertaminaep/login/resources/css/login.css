@@ -1,0 +1,203 @@
+/* Smart CCTV AI (Pertamina EP) — split-screen login theme, light palette.
+   Matches the approved design canvas (Login.dc.html): pale green hero
+   panel (#F3F9EE, echoing the logo's green), white form panel, dark text
+   throughout — no decorative background pattern, no icon on the hero
+   panel. See ADR-0009 for the brand-palette derivation and ADR-0011 for
+   why this replaced the earlier dark theme (the real app never followed
+   the canvas's pivot from dark to light until now).
+   Pairs with the custom template.ftl in this theme (which wraps the
+   standard Keycloak form sections in a two-column .vg-split/.vg-hero/
+   .vg-panel layout instead of the default single centered card).
+   Selectors below target the REAL class names used by this Keycloak
+   version's base login templates (pf-c-form-control, pf-c-button, etc.),
+   confirmed by inspecting the extracted theme jar rather than assumed. */
+
+html.login-pf,
+.login-pf body {
+  background: #ffffff !important;
+  height: auto;
+  min-height: 100%;
+}
+
+.vg-split {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ---------- left: hero panel ---------- */
+.vg-hero {
+  flex: 1 1 48%;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  padding: 4.5rem 4rem;
+  background: #F3F9EE;
+}
+
+.vg-hero-inner {
+  position: relative;
+  z-index: 2;
+  max-width: 26rem;
+}
+
+.vg-hero-logo {
+  margin-bottom: 3.5rem;
+}
+
+.vg-logo {
+  height: 132px;
+  width: auto;
+  display: block;
+}
+
+.vg-hero-title {
+  font-size: 2.1rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: #171A1D;
+  margin: 0 0 0.9rem;
+}
+
+.vg-hero-sub {
+  font-size: 1rem;
+  line-height: 1.65;
+  color: #61686F;
+  margin: 0;
+  max-width: 24rem;
+}
+
+/* ---------- right: form panel ---------- */
+.vg-panel {
+  flex: 1 1 52%;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+}
+
+.vg-panel-inner {
+  width: 100%;
+  max-width: 380px;
+}
+
+.vg-panel-footer {
+  width: 100%;
+  max-width: 380px;
+  margin-top: 2.5rem;
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  color: #9AA1A9;
+}
+
+@media (max-width: 860px) {
+  .vg-hero { display: none; }
+  .vg-panel { flex: 1 1 100%; }
+}
+
+/* ---------- form card: no floating card on this theme, panel IS the card ---------- */
+.card-pf {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  width: 100%;
+}
+
+#kc-page-title {
+  color: #171A1D;
+  font-size: 1.4rem;
+  font-weight: 700;
+  text-align: left;
+  margin: 0 0 0.4rem;
+}
+
+label,
+.pf-c-form__label-text {
+  color: #171A1D;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.form-group {
+  margin-bottom: 1.1rem;
+}
+
+.pf-c-form-control {
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid #DEE2E6;
+  color: #171A1D;
+  border-radius: 8px;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.92rem;
+}
+
+.pf-c-form-control:focus {
+  outline: none;
+  border-color: #E4032E;
+  box-shadow: 0 0 0 3px rgba(228, 3, 46, 0.12);
+}
+
+.pf-c-button.pf-m-control {
+  background: transparent;
+  border: none;
+  color: #9AA1A9;
+}
+
+#kc-form-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: -0.3rem 0 1.3rem;
+}
+
+#kc-form-options .checkbox label {
+  color: #61686F;
+  font-weight: 500;
+  font-size: 0.85rem;
+}
+
+#kc-form-options a {
+  color: #B8021F;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+#kc-form-options a:hover {
+  text-decoration: underline;
+}
+
+.pf-c-button.pf-m-primary {
+  background-color: #E4032E !important;
+  border-color: #E4032E !important;
+  color: #ffffff !important;
+  width: 100%;
+  padding: 0.8rem 1rem;
+  font-size: 1rem;
+  font-weight: 700;
+  border-radius: 8px;
+}
+.pf-c-button.pf-m-primary:hover {
+  background-color: #b8021f !important;
+  border-color: #b8021f !important;
+}
+
+#kc-content a,
+#kc-info-wrapper a,
+#kc-registration a {
+  color: #0067B1;
+}
+
+.alert-error {
+  background: #F8DADD;
+  border: 1px solid rgba(163, 0, 26, 0.3);
+  color: #A3001A;
+  border-radius: 8px;
+  padding: 0.7rem 0.9rem;
+  margin-bottom: 1rem;
+  font-size: 0.88rem;
+}

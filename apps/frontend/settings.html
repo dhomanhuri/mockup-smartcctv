@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pengaturan — Smart CCTV AI</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<header><div id="shell-header"></div></header>
+<div class="app-layout">
+  <nav class="sidebar" id="shell-sidebar"></nav>
+  <main>
+    <div id="restrictedNotice" hidden class="restricted">
+      <div class="icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
+      <h2>Akses Terbatas</h2>
+      <p>Halaman Pengaturan hanya bisa diakses oleh role <strong>Admin</strong>. Hubungi Admin Platform kalau kamu butuh perubahan daftar kamera.</p>
+    </div>
+
+    <div id="settingsContent" hidden>
+      <div class="page-head"><h2>Pengaturan</h2></div>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Kelola Kamera</h2>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Nama</th><th>IP</th><th>Lokasi</th><th>Kategori</th><th>Stream</th><th></th></tr></thead>
+            <tbody id="cameraTable"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<div id="camModalRoot"></div>
+
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script src="shell.js"></script>
+<script>
+const Auth = createAuthClient({ realm: window.APP_CONFIG.realm, clientId: window.APP_CONFIG.clientId, storageKey: "vg_tokens" });
+let cameras = [];
+let editingCameraId = null;
+
+function camRowHtml(c){
+  return `
+    <tr class="row-click" onclick="openEditCamera(${c.id})" style="cursor:pointer;">
+      <td>${c.name}</td>
+      <td class="mono">${c.ip_address}</td>
+      <td>${c.location || "-"}</td>
+      <td>${c.category === "vehicle" ? "Vehicle Violation" : "APD Detection"}</td>
+      <td><span class="badge ${c.stream_path ? "success" : "muted"}">${c.stream_path ? "Live" : "Belum ada"}</span></td>
+      <td onclick="event.stopPropagation()"><button class="link-btn" onclick="openEditCamera(${c.id})">Edit</button></td>
+    </tr>`;
+}
+
+async function loadCameras(){
+  const res = await Auth.apiFetch("/api/cameras");
+  cameras = await res.json();
+  document.getElementById("cameraTable").innerHTML = cameras.map(camRowHtml).join("") || `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">Belum ada kamera</td></tr>`;
+}
+
+function camModalHtml(cam){
+  const isEdit = !!cam;
+  return `
+    <div class="modal-overlay" id="camModalOverlay">
+      <div class="modal">
+        <div class="modal-head">
+          <h3>${isEdit ? "Edit — " + cam.name : "Tambah Kamera"}</h3>
+          <button class="modal-close" data-close>&times;</button>
+        </div>
+        <form id="camForm">
+          <div class="modal-body">
+            <div class="field"><label>Nama Kamera</label><input type="text" id="camName" required value="${isEdit ? cam.name : ""}" /></div>
+            ${isEdit ? "" : `<div class="field"><label>Alamat IP</label><input type="text" id="camIp" required placeholder="192.168.56.110" /></div>`}
+            <div class="field"><label>Lokasi</label><input type="text" id="camLocation" value="${isEdit ? cam.location || "" : ""}" /></div>
+            <div class="field">
+              <label>Kategori Deteksi</label>
+              <select id="camCategory">
+                <option value="apd" ${isEdit && cam.category === "apd" ? "selected" : ""}>APD Detection</option>
+                <option value="vehicle" ${isEdit && cam.category === "vehicle" ? "selected" : ""}>Vehicle Violation</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>RTSP URL (opsional)</label>
+              <input type="text" id="camRtsp" value="${isEdit ? cam.rtsp_url || "" : ""}" placeholder="rtsp://user:pass@192.168.56.110:554/stream1" />
+              <div class="hint">Diisi bila kamera punya stream RTSP nyata. Kosongkan bila kamera baru sekadar terdaftar tanpa live view.</div>
+            </div>
+            <div class="form-error" id="camFormError">Gagal menyimpan kamera.</div>
+          </div>
+          <div class="modal-actions" style="justify-content:space-between;">
+            ${isEdit ? `<button type="button" class="link-btn" style="color:var(--critical);" id="deleteCam">Hapus Kamera</button>` : "<span></span>"}
+            <div style="display:flex;gap:0.6rem;">
+              <button type="button" class="btn-secondary" data-close>Batal</button>
+              <button type="submit" class="btn-primary">${isEdit ? "Simpan Perubahan" : "Simpan Kamera"}</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>`;
+}
+
+window.openEditCamera = function(id){
+  editingCameraId = id;
+  const cam = cameras.find(c => c.id === id);
+  document.getElementById("camModalRoot").innerHTML = camModalHtml(cam);
+  wireCamModal(cam);
+};
+
+function closeCamModal(){ document.getElementById("camModalRoot").innerHTML = ""; editingCameraId = null; }
+
+function wireCamModal(cam){
+  document.getElementById("camModalRoot").addEventListener("click", (e) => {
+    if (e.target.dataset.close !== undefined || e.target.id === "camModalOverlay") closeCamModal();
+  });
+  const deleteBtn = document.getElementById("deleteCam");
+  if (deleteBtn) deleteBtn.addEventListener("click", async () => {
+    if (!confirm("Hapus kamera ini beserta riwayat pelanggarannya? Tindakan ini tidak bisa dibatalkan.")) return;
+    await Auth.apiFetch(`/api/cameras/${editingCameraId}`, { method: "DELETE" });
+    closeCamModal();
+    await loadCameras();
+  });
+  document.getElementById("camForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const errEl = document.getElementById("camFormError");
+    const body = {
+      name: document.getElementById("camName").value.trim(),
+      location: document.getElementById("camLocation").value.trim() || null,
+      category: document.getElementById("camCategory").value,
+      rtsp_url: document.getElementById("camRtsp").value.trim() || null,
+    };
+    let res;
+    if (cam){
+      body.clear_rtsp_url = !body.rtsp_url && !!cam.rtsp_url;
+      res = await Auth.apiFetch(`/api/cameras/${cam.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    } else {
+      body.ip_address = document.getElementById("camIp").value.trim();
+      res = await Auth.apiFetch("/api/cameras", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    }
+    if (!res.ok){
+      const detail = await res.json().catch(() => ({}));
+      errEl.textContent = detail.detail || "Gagal menyimpan kamera.";
+      errEl.classList.add("show");
+      return;
+    }
+    closeCamModal();
+    await loadCameras();
+  });
+}
+
+(async () => {
+  try {
+    if (!(await Auth.init())) return;
+    Shell.mount({ active: "settings", auth: Auth });
+    if (!Auth.hasRole("admin")){
+      document.getElementById("restrictedNotice").hidden = false;
+      return;
+    }
+    document.getElementById("settingsContent").hidden = false;
+    await loadCameras();
+  } catch (err) { Shell.showFatalError(err); }
+})();
+</script>
+</body>
+</html>

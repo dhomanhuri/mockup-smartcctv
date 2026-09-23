@@ -1,0 +1,109 @@
+{
+  "realm": "smart-cctv-ai",
+  "enabled": true,
+  "displayName": "Pertamina EP",
+  "displayNameHtml": "<strong>Pertamina EP</strong> &middot; Smart CCTV AI",
+  "loginTheme": "pertaminaep",
+  "accountTheme": "pertaminaep",
+  "internationalizationEnabled": true,
+  "supportedLocales": ["id"],
+  "defaultLocale": "id",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "smtpServer": {
+    "host": "mailpit",
+    "port": "1025",
+    "from": "smart-cctv-ai@pertamina-ep.local",
+    "fromDisplayName": "Smart CCTV AI",
+    "ssl": "false",
+    "starttls": "false",
+    "auth": "false"
+  },
+  "roles": {
+    "realm": [
+      { "name": "operator", "description": "Memantau kamera & pelanggaran, acknowledge kasus baru - tidak bisa assign/menutup kasus atau mengubah Pengaturan" },
+      { "name": "supervisor", "description": "Assign kasus ke petugas & menutup kasus (Selesai) - tidak bisa mengubah Pengaturan" },
+      { "name": "admin", "description": "Akses penuh - kelola user platform, kamera, dan Aturan Notifikasi" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "smart-cctv-ai-dashboard",
+      "name": "Smart CCTV AI Dashboard",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["http://192.168.56.199/*", "http://localhost/*"],
+      "webOrigins": ["http://192.168.56.199", "http://localhost"],
+      "fullScopeAllowed": true,
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    },
+    {
+      "clientId": "smart-cctv-ai-user-manager",
+      "name": "Smart CCTV AI User Manager (service account, backend-only)",
+      "enabled": true,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "secret": "4759cdbb9bbd67d19c36a14525d93e54",
+      "fullScopeAllowed": true
+    }
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Admin",
+      "lastName": "Platform",
+      "email": "admin@pertamina-ep.local",
+      "credentials": [
+        { "type": "password", "value": "busDev123!", "temporary": false }
+      ],
+      "realmRoles": ["operator", "admin"]
+    },
+    {
+      "username": "operator",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Operator",
+      "lastName": "HSE",
+      "email": "operator@pertamina-ep.local",
+      "credentials": [
+        { "type": "password", "value": "busDev123!", "temporary": false }
+      ],
+      "realmRoles": ["operator"]
+    },
+    {
+      "username": "supervisor",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Supervisor",
+      "lastName": "HSE",
+      "email": "supervisor@pertamina-ep.local",
+      "credentials": [
+        { "type": "password", "value": "busDev123!", "temporary": false }
+      ],
+      "realmRoles": ["supervisor"]
+    },
+    {
+      "username": "service-account-smart-cctv-ai-user-manager",
+      "enabled": true,
+      "serviceAccountClientId": "smart-cctv-ai-user-manager",
+      "clientRoles": {
+        "realm-management": ["manage-users", "view-users", "query-users", "view-realm"]
+      }
+    }
+  ]
+}

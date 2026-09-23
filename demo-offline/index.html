@@ -1,0 +1,1209 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Smart CCTV AI Demo</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* ============================================================
+   OFFLINE DEMO BUILD of the Smart CCTV AI platform.
+   - Zero server, zero internet (except Google Fonts), zero login.
+   - All data is mock; the AI "live feed" is simulated on a timer.
+   - Styling is the real app's styles.css inlined verbatim, plus a
+     few demo-only additions at the bottom of this block.
+   Use as a fallback if the target server is unreachable during a demo.
+   ============================================================ */
+
+/* Palette derived from the Pertamina EP mark's three brand colors
+   (red #E4032E, blue #0067B1, green #8DC63F). */
+:root{
+  --bg:#F5F6F7; --surface:#FFFFFF; --surface-2:#EEF0F2; --border:#DEE2E6;
+  --text:#171A1D; --text-muted:#61686F;
+  --accent:#E4032E; --accent-strong:#A8001A; --accent-soft:#FCE4E7;
+  --secondary:#0067B1; --secondary-strong:#00518A; --secondary-soft:#E1EFF8;
+  --success:#4C8C15; --success-soft:#EAF5DC;
+  --warning:#C4841F; --warning-soft:#FBF0DD;
+  --critical:#A3001A; --critical-soft:#F8DADD;
+  --brand-red:#E4032E; --brand-blue:#0067B1; --brand-green:#8DC63F;
+  --mono-tint:#EEF1F0;
+  --shadow: 0 1px 2px rgba(20,32,42,0.05), 0 6px 20px -10px rgba(20,32,42,0.14);
+}
+:root:not([data-theme="light"]){}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1216; --surface:#171B20; --surface-2:#1E2329; --border:#2A3038;
+    --text:#E7EAED; --text-muted:#8D969E;
+    --accent:#FF5C6C; --accent-strong:#FF8A96; --accent-soft:#3A1418;
+    --secondary:#4FA8E8; --secondary-strong:#7CC0F0; --secondary-soft:#12293A;
+    --success:#8DC63F; --success-soft:#1C2C10;
+    --warning:#E0A94A; --warning-soft:#392C14;
+    --critical:#FF6B7A; --critical-soft:#3B1518;
+    --mono-tint:#1B2025;
+    --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 10px 28px -14px rgba(0,0,0,0.55);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1216; --surface:#171B20; --surface-2:#1E2329; --border:#2A3038;
+  --text:#E7EAED; --text-muted:#8D969E;
+  --accent:#FF5C6C; --accent-strong:#FF8A96; --accent-soft:#3A1418;
+  --secondary:#4FA8E8; --secondary-strong:#7CC0F0; --secondary-soft:#12293A;
+  --success:#8DC63F; --success-soft:#1C2C10;
+  --warning:#E0A94A; --warning-soft:#392C14;
+  --critical:#FF6B7A; --critical-soft:#3B1518;
+  --mono-tint:#1B2025;
+  --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 10px 28px -14px rgba(0,0,0,0.55);
+}
+*{ box-sizing:border-box; }
+body{ margin:0; background:var(--bg); color:var(--text); font-family:"Inter",system-ui,sans-serif; }
+.mono{ font-family:"IBM Plex Mono",ui-monospace,monospace; }
+button{ font-family:inherit; }
+a{ color:var(--accent); }
+
+header{
+  display:flex; align-items:center; justify-content:space-between; gap:1rem;
+  padding:0.85rem 1.5rem; border-bottom:1px solid var(--border); background:var(--surface);
+  position:sticky; top:0; z-index:20;
+}
+header::after{
+  content:""; position:absolute; left:0; right:0; bottom:-3px; height:3px;
+  background:linear-gradient(90deg, var(--brand-red), var(--brand-blue), var(--brand-green));
+}
+#shell-header{ display:flex; align-items:center; justify-content:space-between; width:100%; gap:1rem; }
+.brand{ display:flex; align-items:center; gap:0.75rem; }
+.brand .logo{ height:40px; width:40px; display:block; border-radius:6px; flex:none; }
+.brand .divider{ width:1px; height:24px; background:var(--border); }
+.brand h1{ font-size:1.05rem; font-weight:700; margin:0; letter-spacing:-0.01em; }
+.brand .sub{ font-size:0.72rem; color:var(--text-muted); margin-top:0.05rem; }
+.header-right{ display:flex; align-items:center; gap:1rem; }
+.user-chip{ display:flex; align-items:center; gap:0.6rem; padding-left:1rem; border-left:1px solid var(--border); }
+.user-chip .avatar{
+  width:1.7rem; height:1.7rem; border-radius:50%; background:var(--accent-soft); color:var(--accent-strong);
+  display:flex; align-items:center; justify-content:center; font-size:0.75rem; font-weight:700; flex:none;
+}
+.user-chip .name{ font-size:0.85rem; font-weight:600; }
+.logout-btn{
+  font-size:0.78rem; font-weight:600; color:var(--text-muted); background:none; border:1px solid var(--border);
+  border-radius:6px; padding:0.35rem 0.65rem; cursor:pointer;
+}
+.logout-btn:hover{ background:var(--surface-2); color:var(--text); }
+.portal-pill{
+  font-size:0.68rem; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;
+  padding:0.15rem 0.5rem; border-radius:100px; background:var(--accent-soft); color:var(--accent-strong);
+}
+.portal-pill.admin{ background:var(--secondary-soft); color:var(--secondary-strong); }
+
+.stat{ background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:0.9rem 1.1rem; box-shadow:var(--shadow); }
+section.panel{ background:var(--surface); border:1px solid var(--border); border-radius:10px; box-shadow:var(--shadow); overflow:hidden; }
+.panel-head{ display:flex; align-items:center; justify-content:space-between; padding:0.9rem 1.1rem; border-bottom:1px solid var(--border); gap:0.75rem; flex-wrap:wrap; }
+.panel-head h2{ font-size:1rem; font-weight:600; margin:0; }
+.panel-body{ padding:1.1rem; }
+.action-btn{
+  display:inline-flex; align-items:center; gap:0.4rem; font-size:0.82rem; font-weight:600;
+  color:#fff; background:var(--accent); border:none; border-radius:7px; padding:0.42rem 0.8rem; cursor:pointer;
+}
+.action-btn:hover{ background:var(--accent-strong); }
+.table-wrap{ overflow-x:auto; }
+table{ width:100%; border-collapse:collapse; min-width:560px; }
+thead th{ text-align:left; font-size:0.7rem; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; color:var(--text-muted); padding:0.6rem 0.8rem; border-bottom:1px solid var(--border); }
+tbody td{ padding:0.65rem 0.8rem; border-bottom:1px solid var(--border); font-size:0.87rem; }
+tbody tr:last-child td{ border-bottom:none; }
+tr.row-click:hover td{ background:var(--surface-2); }
+.badge{ display:inline-flex; align-items:center; gap:0.3em; font-size:0.72rem; font-weight:600; padding:0.15rem 0.5rem; border-radius:5px; }
+.badge.warning{ background:var(--warning-soft); color:var(--warning); }
+.badge.critical{ background:var(--critical-soft); color:var(--critical); }
+.badge.success{ background:var(--success-soft); color:var(--success); }
+.badge.muted{ background:var(--surface-2); color:var(--text-muted); }
+.tabs{ display:flex; gap:0.4rem; flex-wrap:wrap; }
+.tab{ font-size:0.78rem; font-weight:600; padding:0.32rem 0.7rem; border-radius:100px; border:1px solid var(--border); background:var(--surface-2); color:var(--text-muted); cursor:pointer; }
+.tab.active{ background:var(--accent-soft); color:var(--accent-strong); border-color:transparent; }
+.link-btn{ font-size:0.77rem; font-weight:600; padding:0.28rem 0.65rem; border-radius:6px; border:1px solid var(--border); background:var(--surface-2); color:var(--text); cursor:pointer; }
+.link-btn:hover{ background:var(--accent-soft); color:var(--accent-strong); }
+footer{ text-align:center; color:var(--text-muted); font-size:0.78rem; padding:2rem 1rem 1rem; }
+
+.modal-overlay{
+  position:fixed; inset:0; background:rgba(10,14,18,0.5); display:flex; align-items:center; justify-content:center;
+  z-index:50; padding:1rem;
+}
+.modal-overlay[hidden]{ display:none; }
+.modal{ background:var(--surface); border-radius:12px; width:100%; max-width:420px; box-shadow:var(--shadow); border:1px solid var(--border); }
+.modal-head{ padding:1.1rem 1.2rem 0.9rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.modal-head h3{ margin:0; font-size:1rem; font-weight:700; }
+.modal-close{ background:none; border:none; color:var(--text-muted); font-size:1.1rem; cursor:pointer; line-height:1; }
+.modal-body{ padding:1.1rem 1.2rem; display:flex; flex-direction:column; gap:0.85rem; }
+.field label{ display:block; font-size:0.78rem; font-weight:600; color:var(--text-muted); margin-bottom:0.3rem; }
+.field input, .field select{
+  width:100%; padding:0.5rem 0.65rem; border:1px solid var(--border); border-radius:7px;
+  background:var(--bg); color:var(--text); font-size:0.9rem; font-family:inherit;
+}
+.field input:focus, .field select:focus{ outline:2px solid var(--accent-soft); border-color:var(--accent); }
+.field .checkbox-row{ display:flex; align-items:center; gap:0.5rem; }
+.field .checkbox-row input{ width:auto; }
+.field .checkbox-row label{ margin:0; font-weight:500; color:var(--text); }
+.field .hint{ font-size:0.72rem; color:var(--text-muted); margin-top:0.3rem; }
+.modal-actions{ display:flex; justify-content:flex-end; gap:0.6rem; padding:0.9rem 1.2rem 1.2rem; }
+.btn-secondary{ font-size:0.85rem; font-weight:600; padding:0.5rem 0.9rem; border-radius:7px; border:1px solid var(--border); background:var(--surface-2); color:var(--text); cursor:pointer; }
+.btn-primary{ font-size:0.85rem; font-weight:600; padding:0.5rem 0.9rem; border-radius:7px; border:none; background:var(--accent); color:#fff; cursor:pointer; }
+.btn-primary:hover{ background:var(--accent-strong); }
+.form-error{ font-size:0.8rem; color:var(--critical); display:none; }
+.form-error.show{ display:block; }
+
+.app-layout{ display:flex; align-items:flex-start; }
+.sidebar{
+  width:224px; flex:none; background:var(--surface); border-right:1px solid var(--border);
+  padding:1.5rem 1rem; min-height:calc(100vh - 61px); position:sticky; top:61px;
+}
+.nav-group-label{
+  font-size:0.68rem; font-weight:600; letter-spacing:0.06em; text-transform:uppercase;
+  color:var(--text-muted); opacity:0.75; padding:0 0.75rem; margin:1.4rem 0 0.5rem;
+}
+.nav-group-label:first-child{ margin-top:0; }
+.nav-item{
+  display:flex; align-items:center; gap:0.65rem; width:100%; padding:0.6rem 0.75rem;
+  color:var(--text-muted); font-weight:500; font-size:0.87rem; margin-bottom:0.15rem;
+  border-radius:7px; text-decoration:none; cursor:pointer;
+}
+.nav-item:hover{ background:var(--surface-2); color:var(--text); }
+.nav-item.active{ background:var(--surface-2); color:var(--text); font-weight:600; }
+.app-layout main{ flex:1; min-width:0; max-width:none; margin:0; padding:2rem 2.25rem; }
+.page-head{ margin-bottom:1.5rem; }
+.page-head h2{ font-size:1.15rem; font-weight:700; margin:0 0 0.3rem; }
+.page-head p{ font-size:0.87rem; color:var(--text-muted); margin:0; }
+
+.restricted{
+  max-width:460px; margin:3rem auto 0; text-align:center; background:var(--surface);
+  border:1px solid var(--border); border-radius:10px; padding:2.5rem 2rem;
+}
+.restricted .icon{
+  width:3rem; height:3rem; border-radius:50%; background:var(--critical-soft);
+  display:flex; align-items:center; justify-content:center; margin:0 auto 1rem; color:var(--critical);
+}
+.restricted h2{ font-size:1rem; font-weight:700; margin:0 0 0.4rem; }
+.restricted p{ font-size:0.87rem; color:var(--text-muted); margin:0; }
+
+.category-cards{ display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; margin-bottom:1.5rem; }
+.category-card{ background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:1.25rem; }
+.category-card .head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:0.9rem; }
+.category-card .head .left{ display:flex; align-items:center; gap:0.6rem; font-weight:600; font-size:0.92rem; }
+.category-card .nums{ display:flex; gap:2rem; }
+.category-card .nums .n{ font-size:1.4rem; font-weight:700; }
+.category-card .nums .l{ font-size:0.76rem; color:var(--text-muted); }
+
+.camera-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:1.25rem; margin-bottom:1.5rem; }
+.camera-card{ border:1px solid var(--border); border-radius:10px; overflow:hidden; background:var(--surface); cursor:pointer; }
+.camera-card:hover .camera-feed .expand-hint{ opacity:1; }
+.camera-feed .expand-hint{
+  position:absolute; top:0.6rem; right:0.6rem; z-index:3; background:rgba(0,0,0,0.55); color:#fff;
+  border-radius:6px; padding:0.25rem 0.4rem; display:flex; opacity:0; transition:opacity 0.15s;
+}
+.camera-lightbox .modal{ max-width:960px; width:100%; }
+.camera-lightbox .camera-feed{ aspect-ratio:16/9; border-radius:0; }
+.camera-lightbox .modal-body{ padding:0; }
+.camera-feed{
+  position:relative; aspect-ratio:16/10; background:#0d1117; display:flex;
+  align-items:center; justify-content:center; overflow:hidden;
+}
+.camera-feed .live-badge{ position:absolute; top:0.6rem; left:0.6rem; font-size:0.66rem; font-weight:700; color:#5ad17a; z-index:3; letter-spacing:0.06em; display:flex; align-items:center; gap:0.3rem; }
+.camera-feed .live-badge::before{ content:""; width:0.4rem; height:0.4rem; border-radius:50%; background:#5ad17a; animation:blink 1.4s steps(1) infinite; }
+@keyframes blink{ 50%{ opacity:0.25; } }
+.camera-feed .feed-ts{ position:absolute; left:0.6rem; bottom:0.5rem; z-index:3; font-family:"IBM Plex Mono",monospace; font-size:0.66rem; color:#e8e8e8; text-shadow:0 1px 3px #000; letter-spacing:0.02em; }
+.camera-meta{ padding:0.75rem 0.9rem; }
+.camera-meta .name{ font-weight:600; font-size:0.88rem; }
+.camera-meta .loc{ font-size:0.76rem; color:var(--text-muted); margin-top:0.15rem; }
+@keyframes cam-flash{ 0%{ box-shadow:0 0 0 3px var(--critical); } 100%{ box-shadow:0 0 0 0 transparent; } }
+.cam-flash{ animation:cam-flash 1.2s ease-out; }
+
+.modal.wide{ max-width:560px; max-height:88vh; overflow-y:auto; }
+.snapshot-box{
+  aspect-ratio:16/9; background:#0d1117; border-radius:8px; overflow:hidden;
+  display:flex; align-items:center; justify-content:center; margin-bottom:1.1rem; position:relative;
+}
+.snapshot-box img{ width:100%; height:100%; object-fit:cover; }
+.detail-grid{ display:grid; grid-template-columns:1fr 1fr; gap:0.9rem 1.5rem; margin-bottom:1.25rem; }
+.detail-grid .k{ font-size:0.72rem; color:var(--text-muted); }
+.detail-grid .v{ font-size:0.88rem; font-weight:600; margin-top:0.1rem; }
+.status-stepper{ display:flex; gap:0.5rem; margin-bottom:1.25rem; flex-wrap:wrap; }
+.status-step{
+  font-size:0.82rem; font-weight:600; padding:0.4rem 0.8rem; border-radius:100px; cursor:pointer;
+  border:1px solid var(--border); background:var(--surface); color:var(--text-muted);
+}
+.status-step.active-baru{ border-color:var(--secondary); background:var(--secondary); color:#fff; }
+.status-step.active-diproses{ border-color:var(--warning); background:var(--warning); color:#fff; }
+.status-step.active-selesai{ border-color:var(--success); background:var(--success); color:#fff; }
+.status-step[disabled]{ cursor:not-allowed; opacity:0.5; }
+.readonly-note{
+  padding:0.55rem 0.7rem; border:1px solid var(--border); border-radius:7px; font-size:0.9rem;
+  color:var(--text-muted); background:var(--surface-2);
+}
+.readonly-note .hint{ color:var(--border); font-size:0.78rem; }
+.notes-list{ display:flex; flex-direction:column; gap:0.6rem; }
+.note-item{ background:var(--surface-2); border-radius:8px; padding:0.65rem 0.8rem; }
+.note-item .author{ font-size:0.78rem; font-weight:600; }
+.note-item .author .time{ font-weight:400; color:var(--text-muted); }
+.note-item .text{ font-size:0.85rem; color:var(--text-muted); margin-top:0.2rem; }
+.note-form{ display:flex; gap:0.5rem; margin-top:0.75rem; }
+.note-form input{
+  flex:1; padding:0.5rem 0.65rem; border:1px solid var(--border); border-radius:7px;
+  background:var(--bg); color:var(--text); font-size:0.87rem; font-family:inherit;
+}
+
+.kpi-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:1.25rem; margin-bottom:1.5rem; }
+@media (max-width:900px){ .kpi-grid{ grid-template-columns:repeat(2,1fr); } }
+.kpi-tile{ background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:1rem 1.25rem; }
+.kpi-tile .label{ font-size:0.76rem; color:var(--text-muted); }
+.kpi-tile .value{ font-size:1.7rem; font-weight:700; margin-top:0.3rem; font-variant-numeric:tabular-nums; }
+.kpi-tile .value.success{ color:var(--success); }
+.kpi-tile .value .unit{ font-size:1rem; font-weight:600; color:var(--text-muted); }
+
+.split-bar{ display:flex; border-radius:100px; overflow:hidden; height:10px; margin-bottom:1.15rem; }
+.category-legend{ display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; }
+.category-legend .row{ display:flex; align-items:center; gap:0.75rem; }
+.category-legend .swatch{ width:2.2rem; height:2.2rem; border-radius:8px; display:flex; align-items:center; justify-content:center; flex:none; }
+.category-legend .title{ font-size:0.85rem; font-weight:600; }
+.category-legend .sub{ font-size:0.79rem; color:var(--text-muted); margin-top:0.1rem; }
+.filter-row{ display:flex; align-items:center; justify-content:flex-start; margin-bottom:1.5rem; flex-wrap:wrap; gap:0.75rem; }
+.range-pills{ display:flex; gap:0.5rem; }
+.range-pill{ font-size:0.82rem; font-weight:500; padding:0.4rem 0.85rem; border-radius:100px; border:1px solid var(--border); background:var(--surface); color:var(--text-muted); cursor:pointer; }
+.range-pill.active{ font-weight:600; background:var(--text); color:var(--surface); border-color:var(--text); }
+.date-input{
+  padding:0.4rem 0.6rem; border:1px solid var(--border); border-radius:7px;
+  background:var(--surface); color:var(--text); font-size:0.85rem; font-family:inherit;
+}
+.chart-bar-row{ display:flex; align-items:center; gap:0.6rem; }
+.chart-bar-track{ flex:1; background:var(--surface-2); border-radius:100px; height:8px; overflow:hidden; }
+.chart-bar-fill{ height:100%; border-radius:100px; }
+.chart-label{ font-size:11px; fill:var(--text-muted); font-family:"Inter",sans-serif; }
+
+/* ---------- demo-only additions ---------- */
+.demo-tag{
+  position:fixed; left:0.9rem; bottom:0.9rem; z-index:80; font-size:0.68rem; font-weight:700;
+  letter-spacing:0.05em; text-transform:uppercase; background:var(--text); color:var(--surface);
+  padding:0.3rem 0.6rem; border-radius:100px; opacity:0.9;
+}
+.demo-toast{
+  position:fixed; right:1.1rem; bottom:1.1rem; z-index:90; background:var(--surface); color:var(--text);
+  border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:8px;
+  padding:0.7rem 0.95rem; font-size:0.82rem; box-shadow:var(--shadow); max-width:320px;
+  opacity:0; transform:translateY(0.6rem); pointer-events:none;
+  transition:opacity 0.28s ease, transform 0.28s cubic-bezier(.2,.8,.2,1);
+}
+.demo-toast.show{ opacity:1; transform:translateY(0); }
+
+/* login gate */
+.login-wrap{ min-height:100vh; display:flex; }
+.login-hero{ flex:1; background:#1f2429; display:none; position:relative; overflow:hidden; padding:3rem; color:#fff; }
+@media(min-width:900px){ .login-hero{ display:flex; flex-direction:column; justify-content:center; } }
+.login-hero::after{ content:""; position:absolute; inset:auto 0 0 0; height:4px; background:linear-gradient(90deg,var(--brand-red),var(--brand-blue),var(--brand-green)); }
+.login-hero .eyebrow{ font-size:0.72rem; font-weight:700; letter-spacing:0.14em; color:var(--brand-red); text-transform:uppercase; }
+.login-hero h1{ font-size:2.6rem; line-height:1.1; margin:0.6rem 0 0.4rem; font-weight:700; text-wrap:balance; }
+.login-hero p{ color:#aab2b9; max-width:34ch; font-size:0.95rem; }
+.login-hero ul{ margin:1.4rem 0 0; padding:0; list-style:none; display:flex; flex-direction:column; gap:0.55rem; }
+.login-hero li{ font-size:0.85rem; color:#cfd5da; display:flex; align-items:center; gap:0.5rem; }
+.login-hero li::before{ content:""; width:0.4rem; height:0.4rem; border-radius:50%; background:var(--brand-green); flex:none; }
+.login-panel{ width:100%; max-width:440px; display:flex; flex-direction:column; justify-content:center; padding:2.5rem 2.25rem; margin:0 auto; }
+.login-panel .lp-brand{ display:flex; align-items:center; gap:0.7rem; margin-bottom:2rem; }
+.login-panel .lp-brand .logo{ width:40px; height:40px; border-radius:7px; }
+.login-panel h2{ font-size:1.25rem; margin:0 0 0.35rem; }
+.login-panel .sub{ color:var(--text-muted); font-size:0.88rem; margin-bottom:1.6rem; }
+.role-pick{ display:flex; flex-direction:column; gap:0.6rem; margin-bottom:1.4rem; }
+.role-opt{
+  display:flex; align-items:flex-start; gap:0.75rem; border:1px solid var(--border); border-radius:9px;
+  padding:0.8rem 0.9rem; cursor:pointer; background:var(--surface);
+}
+.role-opt:hover{ border-color:var(--accent); }
+.role-opt.sel{ border-color:var(--accent); background:var(--accent-soft); }
+.role-opt input{ margin-top:0.15rem; accent-color:var(--accent); flex:none; }
+.role-opt > span{ display:flex; flex-direction:column; gap:0.15rem; }
+.role-opt .r-name{ font-weight:600; font-size:0.9rem; display:block; }
+.role-opt .r-desc{ font-size:0.78rem; color:var(--text-muted); display:block; }
+.login-panel .enter{ width:100%; font-size:0.95rem; padding:0.7rem; }
+.login-note{ font-size:0.75rem; color:var(--text-muted); margin-top:1.2rem; text-align:center; }
+
+[hidden]{ display:none !important; }
+:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+@media (prefers-reduced-motion: reduce){ *{ animation-duration:0.001ms !important; transition-duration:0.001ms !important; } }
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN GATE ============ -->
+<div class="login-wrap" id="loginGate">
+  <div class="login-hero">
+    <div class="eyebrow">Pertamina EP &middot; Mode Demo</div>
+    <h1>Smart CCTV AI Platform</h1>
+    <p>Deteksi pelanggaran APD &amp; kendaraan berbasis AI, langsung dari CCTV yang sudah terpasang.</p>
+    <ul>
+      <li>Deteksi real-time: tidak pakai helm &amp; penumpang di bak kendaraan</li>
+      <li>Alur Alert &rarr; Case Violation dengan penugasan &amp; catatan</li>
+      <li>Notifikasi email otomatis + bukti foto</li>
+      <li>Laporan &amp; analitik dengan export PDF</li>
+    </ul>
+  </div>
+  <div class="login-panel">
+    <div class="lp-brand">
+      <svg class="logo" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="7" fill="#1f2429"/><path d="M8 24l7-9h6l3 4h5l-7 9h-6l-3-4z" fill="#E4032E"/><path d="M8 24l7-9h4l-7 9z" fill="#0067B1"/><path d="M22 19l3 4h5l-3-4z" fill="#8DC63F"/></svg>
+      <div>
+        <div style="font-weight:700;">Smart CCTV AI</div>
+        <div style="font-size:0.74rem;color:var(--text-muted);">Safety &amp; Vehicle Violation Detection</div>
+      </div>
+    </div>
+    <h2>Masuk untuk mulai demo</h2>
+    <div class="sub">Pilih peran untuk melihat perbedaan hak akses (RBAC) di aplikasi.</div>
+    <div class="role-pick" id="rolePick">
+      <label class="role-opt sel"><input type="radio" name="role" value="admin" checked>
+        <span><span class="r-name">Admin Platform</span><span class="r-desc">Akses penuh — semua halaman, kelola kamera &amp; user</span></span></label>
+      <label class="role-opt"><input type="radio" name="role" value="supervisor">
+        <span><span class="r-name">Supervisor HSE</span><span class="r-desc">Assign &amp; tutup kasus — tanpa Pengaturan / Manajemen User</span></span></label>
+      <label class="role-opt"><input type="radio" name="role" value="operator">
+        <span><span class="r-name">Operator HSE</span><span class="r-desc">Monitoring &amp; promosikan alert jadi kasus — tidak bisa assign/tutup</span></span></label>
+    </div>
+    <button class="btn-primary enter" id="enterBtn">Masuk</button>
+    <div class="login-note">Build offline — tanpa server, tanpa internet. Data & deteksi disimulasikan.</div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="appRoot" hidden>
+  <header><div id="shell-header"></div></header>
+  <div class="app-layout">
+    <nav class="sidebar" id="shell-sidebar"></nav>
+    <main id="view"></main>
+  </div>
+</div>
+
+<div id="caseModalRoot"></div>
+<div id="cameraLightboxRoot"></div>
+<div id="camModalRoot"></div>
+<div id="userModalRoot"></div>
+<div class="demo-tag" id="appDemoTag" hidden>Mode Demo — Offline</div>
+<div class="demo-toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ================================================================
+   MOCK DATA
+   ================================================================ */
+const CAMERAS = [
+  { id: 1, name: "Gerbang Utama",  ip: "192.168.56.101", location: "Pos Satpam Depan",            category: "apd" },
+  { id: 2, name: "Area Produksi 1", ip: "192.168.56.102", location: "Lantai Produksi - Zona A",     category: "apd" },
+  { id: 3, name: "Workshop",        ip: "192.168.56.105", location: "Bengkel Perawatan",            category: "apd" },
+  { id: 4, name: "Jalur Kendaraan", ip: "192.168.56.103", location: "Jalan Akses Loading Dock",     category: "vehicle" },
+  { id: 5, name: "Parkiran Truk",   ip: "192.168.56.104", location: "Area Parkir Kendaraan Berat",  category: "vehicle" },
+];
+
+let USERS = [
+  { id: "u-admin", username: "admin",        firstName: "Admin",      lastName: "Platform", email: "admin@pertamina-ep.local",        realmRoles: ["admin", "operator"], enabled: true },
+  { id: "u-spv",   username: "supervisor",   firstName: "Supervisor", lastName: "HSE",      email: "supervisor@pertamina-ep.local",   realmRoles: ["supervisor"],        enabled: true },
+  { id: "u-op",    username: "operator",     firstName: "Operator",   lastName: "HSE",      email: "operator@pertamina-ep.local",     realmRoles: ["operator"],          enabled: true },
+  { id: "u-budi",  username: "budi.santoso", firstName: "Budi",       lastName: "Santoso",  email: "budi.santoso@pertamina-ep.local", realmRoles: ["operator"],          enabled: true },
+  { id: "u-siti",  username: "siti.rahma",   firstName: "Siti",       lastName: "Rahma",    email: "siti.rahma@pertamina-ep.local",   realmRoles: ["operator"],          enabled: false },
+];
+const OPERATORS = ["Operator HSE", "Budi Santoso"];
+
+const META = {
+  no_helmet:       { label: "Tidak Menggunakan Helm",   category: "apd",     severity: "warning" },
+  truck_bed_rider: { label: "Penumpang di Bak Kendaraan", category: "vehicle", severity: "critical" },
+};
+
+let VIOLATIONS = [];
+let _nextId = 1;
+
+function pick(a){ return a[Math.floor(Math.random() * a.length)]; }
+function conf(){ return 0.45 + Math.random() * 0.5; }
+
+function makeViolation(camId, when, opts = {}){
+  const cam = CAMERAS.find(c => c.id === camId);
+  const type = cam.category === "apd" ? "no_helmet" : "truck_bed_rider";
+  const m = META[type];
+  return {
+    id: _nextId++,
+    camera_id: camId,
+    camera_name: cam.name,
+    camera_location: cam.location,
+    type, label: m.label, category: m.category, severity: m.severity,
+    confidence: opts.confidence ?? conf(),
+    has_snapshot: true,
+    is_case: opts.is_case ?? false,
+    status: opts.status ?? "baru",
+    assigned_to: opts.assigned_to ?? null,
+    responded_at: opts.responded_at ?? null,
+    notes: opts.notes ?? [],
+    created_at: when.toISOString(),
+  };
+}
+
+(function seed(){
+  const now = new Date();
+  // ~5 violations/day for the past 11 days
+  for (let d = 10; d >= 0; d--){
+    const count = 3 + Math.floor(Math.random() * 4);
+    for (let i = 0; i < count; i++){
+      const t = new Date(now);
+      t.setDate(t.getDate() - d);
+      t.setHours(6 + Math.floor(Math.random() * 13), Math.floor(Math.random() * 60), 0, 0);
+      VIOLATIONS.push(makeViolation(pick(CAMERAS).id, t));
+    }
+  }
+  VIOLATIONS.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+  // promote a handful into real cases across the workflow
+  const promo = VIOLATIONS.slice(3, 12);
+  const t0 = new Date(promo[0].created_at);
+  promo[0].is_case = true; promo[0].status = "baru";
+  promo[1].is_case = true; promo[1].status = "diproses"; promo[1].assigned_to = "Budi Santoso";
+  promo[1].responded_at = new Date(new Date(promo[1].created_at).getTime() + 22 * 60000).toISOString();
+  promo[1].notes = [
+    { author: "Supervisor HSE", text: "Sudah dihubungi pengawas area, personel diminta kembali ambil helm.", created_at: new Date(new Date(promo[1].created_at).getTime() + 20 * 60000).toISOString() },
+    { author: "Budi Santoso", text: "Personel sudah pakai APD lengkap. Menunggu konfirmasi selesai.", created_at: new Date(new Date(promo[1].created_at).getTime() + 65 * 60000).toISOString() },
+  ];
+  promo[2].is_case = true; promo[2].status = "diproses"; promo[2].assigned_to = "Operator HSE";
+  promo[2].responded_at = new Date(new Date(promo[2].created_at).getTime() + 14 * 60000).toISOString();
+  promo[2].notes = [{ author: "Operator HSE", text: "Sopir truk diberi teguran lisan, penumpang turun dari bak.", created_at: new Date(new Date(promo[2].created_at).getTime() + 12 * 60000).toISOString() }];
+  promo[4].is_case = true; promo[4].status = "selesai"; promo[4].assigned_to = "Budi Santoso";
+  promo[4].responded_at = new Date(new Date(promo[4].created_at).getTime() + 9 * 60000).toISOString();
+  promo[4].notes = [
+    { author: "Budi Santoso", text: "Ditindaklanjuti ke unit terkait.", created_at: new Date(new Date(promo[4].created_at).getTime() + 8 * 60000).toISOString() },
+    { author: "Supervisor HSE", text: "Selesai — briefing ulang APD sudah dilakukan di area tsb.", created_at: new Date(new Date(promo[4].created_at).getTime() + 130 * 60000).toISOString() },
+  ];
+  promo[6].is_case = true; promo[6].status = "baru";
+  promo[8].is_case = true; promo[8].status = "selesai"; promo[8].assigned_to = "Operator HSE";
+  promo[8].responded_at = new Date(new Date(promo[8].created_at).getTime() + 18 * 60000).toISOString();
+})();
+
+/* ================================================================
+   AUTH (mock) + helpers
+   ================================================================ */
+const ROLE_LABELS = { admin: "Admin", supervisor: "Supervisor", operator: "Operator" };
+const ROLE_USER = {
+  admin:      { name: "Admin Platform",  username: "admin",      roles: ["admin", "operator"] },
+  supervisor: { name: "Supervisor HSE",  username: "supervisor", roles: ["supervisor"] },
+  operator:   { name: "Operator HSE",    username: "operator",   roles: ["operator"] },
+};
+let Auth = { name: "", username: "", roles: [] };
+const hasRole = r => Auth.roles.includes(r);
+const hasAnyRole = rs => rs.some(r => Auth.roles.includes(r));
+const canManage = () => hasAnyRole(["admin", "supervisor"]);
+
+function fmtTime(iso){ return new Date(iso).toLocaleString("id-ID", { day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit" }); }
+function fmtFull(iso){ return new Date(iso).toLocaleString("id-ID"); }
+function isoDate(d){ return d.toISOString().slice(0, 10); }
+function initials(name){ return (name || "?").split(/[.\s]/).filter(Boolean).slice(0,2).map(s => s[0].toUpperCase()).join(""); }
+function esc(s){ return String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c])); }
+
+let _toastTimer;
+function toast(msg){
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove("show"), 3200);
+}
+
+/* ================================================================
+   SNAPSHOT / CAMERA VISUALS  (generated, no real video)
+   ================================================================ */
+function sceneSvg(cam, opts = {}){
+  const w = 640, h = 360;
+  const label = opts.violationLabel || "";
+  const box = opts.box; // {x,y,w,h}
+  const ts = opts.ts || new Date().toLocaleString("id-ID");
+  const tint = cam.category === "vehicle" ? "#141c22" : "#161c17";
+  const figs = cam.category === "vehicle"
+    ? `<rect x="120" y="150" width="300" height="120" rx="6" fill="#26333d"/><rect x="120" y="150" width="120" height="70" rx="4" fill="#2f4049"/><circle cx="175" cy="285" r="26" fill="#0c1116"/><circle cx="380" cy="285" r="26" fill="#0c1116"/><ellipse cx="300" cy="150" rx="16" ry="30" fill="#3a4a52"/><ellipse cx="330" cy="155" rx="15" ry="28" fill="#3a4a52"/>`
+    : `<rect x="60" y="90" width="90" height="180" rx="4" fill="#232b23"/><rect x="480" y="70" width="110" height="200" rx="4" fill="#232b23"/><ellipse cx="290" cy="175" rx="22" ry="46" fill="#39433a"/><circle cx="290" cy="120" r="18" fill="#454f45"/><ellipse cx="360" cy="185" rx="20" ry="42" fill="#39433a"/><circle cx="360" cy="132" r="17" fill="#454f45"/>`;
+  const boxSvg = box
+    ? `<rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" fill="none" stroke="#ff3b3b" stroke-width="3"/>
+       <rect x="${box.x}" y="${box.y - 20}" width="${label.length * 7.4 + 14}" height="20" fill="#ff3b3b"/>
+       <text x="${box.x + 7}" y="${box.y - 6}" font-family="monospace" font-size="12" fill="#fff" font-weight="bold">${esc(label)}</text>`
+    : "";
+  // A "plain" scene omits the burned-in camera name + timestamp — the
+  // live tile draws those as HTML overlays (LIVE badge, ticking clock)
+  // so they'd otherwise collide.
+  const burn = opts.plain ? "" : `
+  <text x="14" y="24" font-family="monospace" font-size="13" fill="#dfe4e8" font-weight="bold">${esc(cam.name.toUpperCase())}</text>
+  <text x="14" y="${h - 14}" font-family="monospace" font-size="12" fill="#e8e8e8">${esc(ts)}</text>`;
+  return `data:image/svg+xml,${encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${tint}"/><stop offset="1" stop-color="#090c10"/></linearGradient></defs>
+  <rect width="${w}" height="${h}" fill="url(#g)"/>
+  <line x1="0" y1="260" x2="${w}" y2="260" stroke="#2a3138" stroke-width="2"/>
+  ${figs}
+  ${boxSvg}
+  <rect width="${w}" height="${h}" fill="#000" opacity="0.06"/>${burn}
+</svg>`)}`;
+}
+function violationBox(v){
+  return v.category === "vehicle"
+    ? { x: 285, y: 110, w: 70, h: 66, label: "DI BAK KENDARAAN" }
+    : { x: 268, y: 92, w: 46, h: 96, label: "TANPA HELM" };
+}
+function snapshotFor(v){
+  const cam = CAMERAS.find(c => c.id === v.camera_id);
+  const b = violationBox(v);
+  return sceneSvg(cam, { violationLabel: b.label, box: b, ts: new Date(v.created_at).toLocaleString("id-ID") });
+}
+
+/* live camera tile background — plain scene (no burn-in), no detection box */
+function cameraFeedHtml(cam, big){
+  const bg = sceneSvg(cam, { plain: true });
+  return `
+    <div class="camera-feed" style="background-image:url('${bg}');background-size:cover;background-position:center;">
+      <span class="live-badge">LIVE</span>
+      ${big ? "" : `<span class="expand-hint"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></span>`}
+      <span class="feed-ts">${new Date().toLocaleString("id-ID")}</span>
+    </div>`;
+}
+setInterval(() => {
+  const now = new Date().toLocaleString("id-ID");
+  document.querySelectorAll(".feed-ts").forEach(el => { el.textContent = now; });
+}, 1000);
+
+/* ================================================================
+   SHELL  (header + sidebar)
+   ================================================================ */
+const ICONS = {
+  dashboard: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>',
+  hardhat: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 15.5V15a8 8 0 0 1 16 0v0.5"/><rect x="3" y="15.5" width="18" height="3" rx="1.2"/><path d="M12 6.5v2.2"/></svg>',
+  truck: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="6" width="11" height="10" rx="1"/><path d="M13 10h4l3 3v3h-7z"/><circle cx="6.5" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/></svg>',
+  case: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M9 3h6a1 1 0 0 1 1 1v1H8V4a1 1 0 0 1 1-1z"/><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 12.5l2 2 4-4.5"/></svg>',
+  reports: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 19V11"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M4 19h16"/></svg>',
+  settings: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><line x1="4" y1="6" x2="20" y2="6"/><circle cx="9" cy="6" r="1.8" fill="var(--surface)"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="15" cy="12" r="1.8" fill="var(--surface)"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="7" cy="18" r="1.8" fill="var(--surface)"/></svg>',
+  users: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+};
+const NAV = [
+  { group: "Overview", items: [{ key: "dashboard", label: "Dashboard", icon: "dashboard" }] },
+  { group: "Deteksi", items: [
+    { key: "apd", label: "APD Detection", icon: "hardhat" },
+    { key: "vehicle", label: "Vehicle Violation", icon: "truck" },
+  ] },
+  { group: "Operasional", items: [
+    { key: "cases", label: "Case Violation", icon: "case" },
+    { key: "reports", label: "Laporan & Analitik", icon: "reports" },
+  ] },
+  { group: "Platform", items: [
+    { key: "settings", label: "Pengaturan", icon: "settings", adminOnly: true },
+    { key: "admin", label: "Manajemen User", icon: "users", adminOnly: true },
+  ] },
+];
+function primaryRoleLabel(){
+  if (hasRole("admin")) return "Admin";
+  if (hasRole("supervisor")) return "Supervisor";
+  return "Operator";
+}
+function mountShell(active){
+  const roleLabel = primaryRoleLabel();
+  document.getElementById("shell-header").innerHTML = `
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="6" fill="#1f2429"/><path d="M8 24l7-9h6l3 4h5l-7 9h-6l-3-4z" fill="#E4032E"/><path d="M8 24l7-9h4l-7 9z" fill="#0067B1"/><path d="M22 19l3 4h5l-3-4z" fill="#8DC63F"/></svg>
+      <div class="divider"></div>
+      <div><h1>Smart CCTV AI</h1><div class="sub">Safety &amp; Vehicle Violation Detection</div></div>
+    </div>
+    <div class="header-right">
+      <span class="portal-pill${roleLabel === "Admin" ? " admin" : ""}">${roleLabel}</span>
+      <div class="user-chip">
+        <div class="avatar">${initials(Auth.name)}</div>
+        <span class="name">${esc(Auth.name)}</span>
+        <button class="logout-btn" id="shellLogoutBtn">Keluar</button>
+      </div>
+    </div>`;
+  const isAdmin = hasRole("admin");
+  document.getElementById("shell-sidebar").innerHTML = NAV.map(({ group, items }) => {
+    const visible = items.filter(it => !it.adminOnly || isAdmin);
+    if (!visible.length) return "";
+    const rows = visible.map(it => `
+      <a class="nav-item${it.key === active ? " active" : ""}" href="#${it.key}">${ICONS[it.icon]}<span>${it.label}</span></a>`).join("");
+    return `<div class="nav-group-label">${group}</div>${rows}`;
+  }).join("");
+  document.getElementById("shellLogoutBtn").addEventListener("click", () => location.reload());
+}
+
+/* ================================================================
+   CHARTS
+   ================================================================ */
+function dailyBuckets(rows, days){
+  const map = {};
+  for (let i = 0; i < days; i++){
+    const d = new Date(); d.setDate(d.getDate() - (days - 1 - i));
+    map[isoDate(d)] = { date: isoDate(d), apd: 0, vehicle: 0 };
+  }
+  rows.forEach(v => {
+    const k = v.created_at.slice(0, 10);
+    if (map[k]) map[k][v.category]++;
+  });
+  return Object.values(map);
+}
+function trendSvg(daily, big){
+  const W = 900, H = big ? 240 : 200, padL = 40, padR = 20, padB = big ? 46 : 34, padT = 10;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const maxVal = Math.max(1, ...daily.flatMap(d => [d.apd, d.vehicle]));
+  const niceMax = Math.ceil(maxVal / 5) * 5 || 5;
+  const n = daily.length || 1, groupW = plotW / n, barW = Math.min(22, groupW * 0.32);
+  const DAY = ["Min","Sen","Sel","Rab","Kam","Jum","Sab"];
+  const stride = n <= 10 ? 1 : (n <= 16 ? 2 : (n <= 24 ? 3 : 5));
+  let s = "";
+  for (let i = 0; i <= 4; i++){
+    const y = padT + plotH - (plotH * i / 4);
+    s += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="var(--border)" stroke-width="1"/>`;
+    s += `<text class="chart-label" x="${padL - 8}" y="${y + 4}" text-anchor="end">${Math.round(niceMax * i / 4)}</text>`;
+  }
+  daily.forEach((d, i) => {
+    const cx = padL + groupW * i + groupW / 2;
+    const aH = (d.apd / niceMax) * plotH, vH = (d.vehicle / niceMax) * plotH;
+    s += `<rect x="${cx - barW - 2}" y="${padT + plotH - aH}" width="${barW}" height="${aH}" rx="3" fill="#B57712"/>`;
+    s += `<rect x="${cx + 2}" y="${padT + plotH - vH}" width="${barW}" height="${vH}" rx="3" fill="#B8021F"/>`;
+    if (i % stride === 0){
+      const lbl = big ? new Date(d.date).getDate() : DAY[new Date(d.date).getDay()];
+      s += `<text class="chart-label" x="${cx}" y="${H - padB + 18}" text-anchor="middle">${lbl}</text>`;
+    }
+  });
+  return s;
+}
+
+/* ================================================================
+   VIEWS
+   ================================================================ */
+const view = () => document.getElementById("view");
+
+function renderDashboard(){
+  mountShell("dashboard");
+  const total = VIOLATIONS.length;
+  const openCases = VIOLATIONS.filter(v => v.is_case && v.status !== "selesai").length;
+  const since24 = Date.now() - 864e5;
+  const last24 = VIOLATIONS.filter(v => new Date(v.created_at).getTime() >= since24).length;
+  const apdV = VIOLATIONS.filter(v => v.category === "apd").length;
+  const vehV = VIOLATIONS.filter(v => v.category === "vehicle").length;
+  const daily = dailyBuckets(VIOLATIONS, 7);
+  const byCam = {};
+  VIOLATIONS.forEach(v => { byCam[v.camera_id] = (byCam[v.camera_id] || 0) + 1; });
+  const top = Object.entries(byCam).map(([id, count]) => {
+    const c = CAMERAS.find(x => x.id === +id);
+    return { camera_name: c.name, location: c.location, category: c.category, count };
+  }).sort((a, b) => b.count - a.count).slice(0, 5);
+  const feed = VIOLATIONS.slice(0, 8);
+
+  view().innerHTML = `
+    <div class="page-head"><h2>Executive Dashboard</h2><p>Ringkasan seluruh area operasi hari ini.</p></div>
+    <div class="kpi-grid">
+      <div class="kpi-tile"><div class="label">Total Kamera</div><div class="value">${CAMERAS.length}</div></div>
+      <div class="kpi-tile"><div class="label">Total Pelanggaran</div><div class="value">${total}</div></div>
+      <div class="kpi-tile"><div class="label">Kasus Terbuka</div><div class="value" style="color:var(--critical);">${openCases}</div></div>
+      <div class="kpi-tile"><div class="label">24 Jam Terakhir</div><div class="value">${last24}</div></div>
+    </div>
+    <div class="category-cards">
+      <div class="category-card">
+        <div class="head"><div class="left">${ICONS.hardhat.replace('stroke="currentColor"','stroke="#B57712"')} APD Detection</div><a href="#apd" style="font-size:0.8rem;font-weight:600;">Lihat detail &rarr;</a></div>
+        <div class="nums"><div><div class="n">${CAMERAS.filter(c=>c.category==="apd").length}</div><div class="l">kamera terpantau</div></div><div><div class="n" style="color:#B57712;">${apdV}</div><div class="l">pelanggaran tercatat</div></div></div>
+      </div>
+      <div class="category-card">
+        <div class="head"><div class="left">${ICONS.truck.replace('stroke="currentColor"','stroke="#B8021F"')} Vehicle Violation</div><a href="#vehicle" style="font-size:0.8rem;font-weight:600;">Lihat detail &rarr;</a></div>
+        <div class="nums"><div><div class="n">${CAMERAS.filter(c=>c.category==="vehicle").length}</div><div class="l">kamera terpantau</div></div><div><div class="n" style="color:#B8021F;">${vehV}</div><div class="l">pelanggaran tercatat</div></div></div>
+      </div>
+    </div>
+    <section class="panel" style="padding:1.25rem 1.5rem;margin-bottom:1.25rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+        <h2 style="font-size:0.92rem;font-weight:600;margin:0;">Tren Pelanggaran Mingguan</h2>
+        <div style="display:flex;gap:1.2rem;">
+          <span style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--text-muted);"><span style="width:9px;height:9px;border-radius:2px;background:#B57712;display:inline-block;"></span>APD Detection</span>
+          <span style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--text-muted);"><span style="width:9px;height:9px;border-radius:2px;background:#B8021F;display:inline-block;"></span>Vehicle Violation</span>
+        </div>
+      </div>
+      <svg viewBox="0 0 900 200" width="100%" style="display:block;overflow:visible;">${trendSvg(daily, false)}</svg>
+    </section>
+    <section class="panel" style="margin-bottom:1.25rem;">
+      <div class="panel-head"><h2>Area dengan Pelanggaran Terbanyak</h2></div>
+      <div class="table-wrap"><table><thead><tr><th>Kamera</th><th>Lokasi</th><th style="width:180px;">Jumlah</th></tr></thead><tbody>
+        ${top.map(c => `<tr><td style="font-weight:600;">${c.camera_name}</td><td style="color:var(--text-muted);">${c.location}</td><td><span class="badge" style="background:${c.category==="vehicle"?"#FBE3E3":"#FBF1DF"};color:${c.category==="vehicle"?"#B8021F":"#B57712"};">${c.count} pelanggaran</span></td></tr>`).join("")}
+      </tbody></table></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>Live Alert Feed</h2><a href="#cases" style="font-size:0.8rem;font-weight:600;">Lihat semua kasus &rarr;</a></div>
+      <div class="panel-body" id="feedList" style="padding:0.5rem 1.1rem;">
+        ${feed.map(feedItemHtml).join("")}
+      </div>
+    </section>`;
+}
+function feedItemHtml(v){
+  const sev = v.severity === "critical" ? "var(--critical)" : "var(--warning)";
+  return `<div style="display:flex;align-items:center;gap:0.75rem;padding:0.85rem 0;border-bottom:1px solid var(--border);">
+    <span style="width:0.45rem;height:0.45rem;border-radius:50%;flex:none;background:${sev};"></span>
+    <div style="flex:1;"><span style="font-weight:600;font-size:0.87rem;">${v.label}</span><span style="font-size:0.82rem;color:var(--text-muted);"> &middot; ${v.camera_name}</span></div>
+    <div class="mono" style="font-size:0.78rem;color:var(--text-muted);">${fmtTime(v.created_at)}</div>
+  </div>`;
+}
+
+function renderDetection(cat){
+  const key = cat === "apd" ? "apd" : "vehicle";
+  mountShell(key);
+  const cams = CAMERAS.filter(c => c.category === cat);
+  const rows = VIOLATIONS.filter(v => v.category === cat).slice(0, 50);
+  const since24 = Date.now() - 864e5;
+  const openCases = rows.filter(v => v.is_case && v.status !== "selesai").length;
+  const last24 = rows.filter(v => new Date(v.created_at).getTime() >= since24).length;
+  const titleP = cat === "apd"
+    ? { h: "APD Detection", p: "Deteksi kepatuhan alat pelindung diri (mis. helm) di kamera terkait." }
+    : { h: "Vehicle Violation", p: "Deteksi penumpang di bak kendaraan pada zona kamera terkait." };
+  view().innerHTML = `
+    <div class="page-head"><h2>${titleP.h}</h2><p>${titleP.p}</p></div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);">
+      <div class="kpi-tile"><div class="label">Kamera Terpantau</div><div class="value">${cams.length}</div></div>
+      <div class="kpi-tile"><div class="label">Pelanggaran (24 Jam)</div><div class="value">${last24}</div></div>
+      <div class="kpi-tile"><div class="label">Kasus Terbuka</div><div class="value" style="color:${cat==="apd"?"#B57712":"#B8021F"};">${openCases}</div></div>
+    </div>
+    <div class="camera-grid">${cams.map(c => `
+      <div class="camera-card" id="cam-${c.id}" data-cam="${c.id}">
+        ${cameraFeedHtml(c, false)}
+        <div class="camera-meta"><div class="name">${c.name}</div><div class="loc">${c.location}</div></div>
+      </div>`).join("")}</div>
+    <section class="panel">
+      <div class="panel-head"><h2>Riwayat Pelanggaran ${cat === "apd" ? "APD" : "Vehicle"}</h2></div>
+      <div class="table-wrap"><table><thead><tr><th>Waktu</th><th>Kamera</th><th>Status</th><th></th></tr></thead>
+      <tbody>${rows.map(violationRow).join("") || `<tr><td colspan="4" style="text-align:center;color:var(--text-muted);">Belum ada data</td></tr>`}</tbody></table></div>
+    </section>`;
+  view().querySelectorAll("[data-cam]").forEach(el => el.addEventListener("click", () => openLightbox(+el.dataset.cam)));
+  wireViolationRows();
+}
+function violationRow(v){
+  const badge = v.is_case
+    ? `<span class="badge ${v.status === "selesai" ? "success" : "warning"}">Kasus &middot; ${{baru:"Baru",diproses:"Diproses",selesai:"Selesai"}[v.status]}</span>`
+    : `<span class="badge muted">Alert</span>`;
+  return `<tr class="row-click" data-vid="${v.id}" style="cursor:pointer;">
+    <td class="mono">${fmtTime(v.created_at)}</td><td>${v.camera_name}</td><td>${badge}</td>
+    <td><button class="link-btn" data-vid="${v.id}">Lihat Detail</button></td></tr>`;
+}
+function wireViolationRows(){
+  view().querySelectorAll("[data-vid]").forEach(el => el.addEventListener("click", e => { e.stopPropagation(); openCase(+el.dataset.vid); }));
+}
+
+function renderCases(){
+  mountShell("cases");
+  view().innerHTML = `
+    <div class="page-head"><h2>Case Violation</h2><p>Semua kasus pelanggaran lintas kategori — status penanganan &amp; penanggung jawab.</p></div>
+    <div class="tabs" id="filterTabs" style="margin-bottom:1.25rem;">
+      <div class="tab active" data-filter="all">Semua</div>
+      <div class="tab" data-filter="apd">APD</div>
+      <div class="tab" data-filter="vehicle">Vehicle</div>
+      <div class="tab" data-filter="open">Kasus Terbuka</div>
+    </div>
+    <section class="panel"><div class="table-wrap"><table>
+      <thead><tr><th>Case ID</th><th>Waktu</th><th>Kategori</th><th>Kamera</th><th>Status</th><th>Ditugaskan</th><th></th></tr></thead>
+      <tbody id="caseTbody"></tbody></table></div></section>`;
+  const draw = (f) => {
+    let rows = VIOLATIONS.filter(v => v.is_case);
+    if (f === "apd" || f === "vehicle") rows = rows.filter(v => v.category === f);
+    if (f === "open") rows = rows.filter(v => v.status !== "selesai");
+    rows.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    document.getElementById("caseTbody").innerHTML = rows.map(v => {
+      const st = { baru: ["Baru","muted"], diproses: ["Diproses","warning"], selesai: ["Selesai","success"] }[v.status];
+      return `<tr class="row-click" data-vid="${v.id}" style="cursor:pointer;">
+        <td class="mono" style="font-weight:600;">CASE-${String(v.id).padStart(4,"0")}</td>
+        <td class="mono">${fmtTime(v.created_at)}</td><td>${v.category === "vehicle" ? "Vehicle" : "APD"}</td>
+        <td>${v.camera_name}</td><td><span class="badge ${st[1]}">${st[0]}</span></td>
+        <td style="color:var(--text-muted);">${v.assigned_to || "Belum ditugaskan"}</td>
+        <td><button class="link-btn" data-vid="${v.id}">Lihat Detail</button></td></tr>`;
+    }).join("") || `<tr><td colspan="7" style="text-align:center;color:var(--text-muted);">Belum ada kasus. Buka sebuah alert dari halaman APD/Vehicle Detection lalu klik "Jadikan Kasus Investigasi".</td></tr>`;
+    document.querySelectorAll("#caseTbody [data-vid]").forEach(el => el.addEventListener("click", e => { e.stopPropagation(); openCase(+el.dataset.vid); }));
+  };
+  document.getElementById("filterTabs").addEventListener("click", e => {
+    const t = e.target.closest(".tab"); if (!t) return;
+    document.querySelectorAll("#filterTabs .tab").forEach(x => x.classList.remove("active"));
+    t.classList.add("active"); draw(t.dataset.filter);
+  });
+  draw("all");
+}
+
+let reportRange = null;
+function renderReports(){
+  mountShell("reports");
+  if (!reportRange){
+    const t = new Date(), a = new Date(); a.setDate(a.getDate() - 6);
+    reportRange = { start: isoDate(a), end: isoDate(t) };
+  }
+  view().innerHTML = `
+    <div class="page-head" style="display:flex;align-items:flex-start;justify-content:space-between;">
+      <div><h2>Laporan &amp; Analitik</h2><p>Tren pelanggaran dan performa penanganan kasus.</p></div>
+      <div style="display:flex;gap:0.6rem;">
+        <button class="btn-secondary" id="dlExec">Unduh Ringkasan Eksekutif</button>
+        <button class="btn-primary" id="dlDetail">Unduh Laporan Detail</button>
+      </div>
+    </div>
+    <div class="filter-row">
+      <div class="range-pills">
+        <div class="range-pill" data-quick="7">7 Hari</div>
+        <div class="range-pill" data-quick="30">30 Hari</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:0.5rem;">
+        <span style="font-size:0.82rem;color:var(--text-muted);">Dari</span>
+        <input type="date" id="dFrom" class="date-input" value="${reportRange.start}" max="${isoDate(new Date())}">
+        <span style="font-size:0.82rem;color:var(--text-muted);">s/d</span>
+        <input type="date" id="dTo" class="date-input" value="${reportRange.end}" max="${isoDate(new Date())}">
+        <button class="btn-secondary" id="applyRange">Terapkan</button>
+      </div>
+      <span id="rangeErr" style="font-size:0.8rem;color:var(--critical);display:none;"></span>
+    </div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(5,1fr);" id="repKpi"></div>
+    <p style="font-size:0.78rem;color:var(--text-muted);margin:-1rem 0 1.5rem;">"Total Pelanggaran" = semua deteksi AI. "Dijadikan Kasus", "Kasus Selesai", dan "Rata-rata Waktu Respons" hanya menghitung alert yang dipromosikan jadi Case Violation.</p>
+    <section class="panel" style="padding:1.25rem 1.5rem;margin-bottom:1.25rem;">
+      <h2 style="font-size:0.92rem;font-weight:600;margin:0 0 1rem;">Distribusi per Kategori</h2>
+      <div class="split-bar" id="splitBar"></div>
+      <div class="category-legend">
+        <div class="row"><div class="swatch" style="background:#FBF1DF;">${ICONS.hardhat.replace('stroke="currentColor"','stroke="#B57712"')}</div>
+          <div><div class="title">APD Detection</div><div class="sub"><span class="mono" id="apdTot" style="font-weight:700;color:var(--text);">–</span> pelanggaran &middot; <span id="apdPct">–</span> dari total</div></div></div>
+        <div class="row"><div class="swatch" style="background:#FBE3E3;">${ICONS.truck.replace('stroke="currentColor"','stroke="#B8021F"')}</div>
+          <div><div class="title">Vehicle Violation</div><div class="sub"><span class="mono" id="vehTot" style="font-weight:700;color:var(--text);">–</span> pelanggaran &middot; <span id="vehPct">–</span> dari total</div></div></div>
+      </div>
+    </section>
+    <section class="panel" style="padding:1.25rem 1.5rem;margin-bottom:1.25rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+        <h2 style="font-size:0.92rem;font-weight:600;margin:0;">Tren Pelanggaran</h2>
+        <div style="display:flex;gap:1.2rem;">
+          <span style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--text-muted);"><span style="width:9px;height:9px;border-radius:2px;background:#B57712;display:inline-block;"></span>APD Detection</span>
+          <span style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--text-muted);"><span style="width:9px;height:9px;border-radius:2px;background:#B8021F;display:inline-block;"></span>Vehicle Violation</span>
+        </div>
+      </div>
+      <svg id="repTrend" viewBox="0 0 900 240" width="100%" style="display:block;overflow:visible;"></svg>
+    </section>
+    <section class="panel"><div class="panel-head"><h2>Pelanggaran per Kamera &amp; Lokasi</h2></div>
+      <div class="table-wrap"><table><thead><tr><th>Kamera</th><th>Lokasi</th><th>Kategori</th><th style="width:260px;">Jumlah</th></tr></thead>
+      <tbody id="repCamTbody"></tbody></table></div></section>`;
+
+  const compute = () => {
+    const s = new Date(reportRange.start + "T00:00:00"), e = new Date(reportRange.end + "T23:59:59");
+    const rows = VIOLATIONS.filter(v => { const t = new Date(v.created_at); return t >= s && t <= e; });
+    const days = Math.round((new Date(reportRange.end) - new Date(reportRange.start)) / 864e5) + 1;
+    const cases = rows.filter(v => v.is_case);
+    const done = cases.filter(v => v.status === "selesai");
+    const responded = cases.filter(v => v.responded_at);
+    const avgResp = responded.length ? Math.round(responded.reduce((a, v) => a + (new Date(v.responded_at) - new Date(v.created_at)) / 60000, 0) / responded.length) : null;
+    const apd = rows.filter(v => v.category === "apd").length, veh = rows.length - apd;
+    const label = reportRange.start === reportRange.end
+      ? new Date(reportRange.start).toLocaleDateString("id-ID", { day:"2-digit", month:"short" })
+      : `${new Date(reportRange.start).toLocaleDateString("id-ID",{day:"2-digit",month:"short"})} – ${new Date(reportRange.end).toLocaleDateString("id-ID",{day:"2-digit",month:"short"})}`;
+    document.getElementById("repKpi").innerHTML = `
+      <div class="kpi-tile"><div class="label">Total Pelanggaran (${label})</div><div class="value">${rows.length}</div></div>
+      <div class="kpi-tile"><div class="label">Rata-rata / Hari</div><div class="value">${(rows.length / days).toFixed(1)}</div></div>
+      <div class="kpi-tile"><div class="label">Dijadikan Kasus</div><div class="value">${cases.length}</div></div>
+      <div class="kpi-tile"><div class="label">Kasus Selesai</div><div class="value success">${cases.length ? Math.round(done.length / cases.length * 100) + "%" : "–"}</div></div>
+      <div class="kpi-tile"><div class="label">Rata-rata Waktu Respons</div><div class="value">${avgResp != null ? avgResp + '<span class="unit"> mnt</span>' : "–"}</div></div>`;
+    const apdPct = rows.length ? Math.round(apd / rows.length * 100) : 0;
+    document.getElementById("splitBar").innerHTML = rows.length
+      ? `<div style="width:${apdPct}%;background:#B57712;"></div><div style="width:${100 - apdPct}%;background:#B8021F;"></div>`
+      : `<div style="width:100%;background:var(--surface-2);"></div>`;
+    document.getElementById("apdTot").textContent = apd;
+    document.getElementById("vehTot").textContent = veh;
+    document.getElementById("apdPct").textContent = apdPct + "%";
+    document.getElementById("vehPct").textContent = (100 - apdPct) + "%";
+    document.getElementById("repTrend").innerHTML = trendSvg(dailyBuckets(rows, Math.min(days, 31)), true);
+    const byCam = {};
+    rows.forEach(v => { byCam[v.camera_id] = (byCam[v.camera_id] || 0) + 1; });
+    const maxC = Math.max(1, ...Object.values(byCam));
+    document.getElementById("repCamTbody").innerHTML = Object.entries(byCam).sort((a,b)=>b[1]-a[1]).map(([id, count]) => {
+      const c = CAMERAS.find(x => x.id === +id);
+      const color = c.category === "vehicle" ? "#B8021F" : "#B57712";
+      const pct = Math.max(4, Math.round(count / maxC * 100));
+      return `<tr><td style="font-weight:600;">${c.name}</td><td style="color:var(--text-muted);">${c.location}</td>
+        <td><span class="badge" style="background:${c.category==="vehicle"?"#FBE3E3":"#FBF1DF"};color:${color};">${c.category==="vehicle"?"Vehicle":"APD"}</span></td>
+        <td><div class="chart-bar-row"><div class="chart-bar-track"><div class="chart-bar-fill" style="width:${pct}%;background:${color};"></div></div><span class="mono" style="font-size:0.85rem;font-weight:600;width:1.8rem;text-align:right;">${count}</span></div></td></tr>`;
+    }).join("") || `<tr><td colspan="4" style="text-align:center;color:var(--text-muted);">Belum ada data</td></tr>`;
+  };
+  const setQuick = (n) => {
+    document.querySelectorAll(".range-pill").forEach(p => p.classList.toggle("active", +p.dataset.quick === n));
+    const t = new Date(), a = new Date(); a.setDate(a.getDate() - (n - 1));
+    reportRange = { start: isoDate(a), end: isoDate(t) };
+    document.getElementById("dFrom").value = reportRange.start;
+    document.getElementById("dTo").value = reportRange.end;
+    compute();
+  };
+  document.querySelectorAll(".range-pill").forEach(p => p.addEventListener("click", () => setQuick(+p.dataset.quick)));
+  document.getElementById("applyRange").addEventListener("click", () => {
+    const f = document.getElementById("dFrom").value, tt = document.getElementById("dTo").value;
+    const err = document.getElementById("rangeErr");
+    if (!f || !tt || f > tt){ err.textContent = 'Tanggal "Dari" harus sebelum "Sampai".'; err.style.display = "inline"; return; }
+    const span = Math.round((new Date(tt) - new Date(f)) / 864e5) + 1;
+    if (span > 31){ err.textContent = `Rentang maksimal 31 hari (dipilih ${span} hari).`; err.style.display = "inline"; return; }
+    err.style.display = "none";
+    document.querySelectorAll(".range-pill").forEach(p => p.classList.remove("active"));
+    reportRange = { start: f, end: tt }; compute();
+  });
+  document.getElementById("dlExec").addEventListener("click", () => toast("Laporan PDF 'Ringkasan Eksekutif' dibuat — mode demo (tidak perlu server)."));
+  document.getElementById("dlDetail").addEventListener("click", () => toast("Laporan PDF 'Detail' + foto bukti dibuat — mode demo (tidak perlu server)."));
+  const t = new Date(), a7 = new Date(); a7.setDate(a7.getDate() - 6);
+  if (reportRange.start === isoDate(a7) && reportRange.end === isoDate(t)) setQuick(7); else compute();
+}
+
+function renderSettings(){
+  mountShell("settings");
+  if (!hasRole("admin")){
+    view().innerHTML = `<div class="restricted"><div class="icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
+      <h2>Akses Terbatas</h2><p>Halaman Pengaturan hanya bisa diakses oleh role <strong>Admin</strong>.</p></div>`;
+    return;
+  }
+  view().innerHTML = `
+    <div class="page-head"><h2>Pengaturan</h2></div>
+    <section class="panel"><div class="panel-head"><h2>Kelola Kamera</h2></div>
+    <div class="table-wrap"><table><thead><tr><th>Nama</th><th>IP</th><th>Lokasi</th><th>Kategori</th><th>Stream</th><th></th></tr></thead>
+    <tbody>${CAMERAS.map(c => `<tr class="row-click" data-cam="${c.id}" style="cursor:pointer;">
+      <td>${c.name}</td><td class="mono">${c.ip}</td><td>${c.location}</td>
+      <td>${c.category === "vehicle" ? "Vehicle Violation" : "APD Detection"}</td>
+      <td><span class="badge success">Live</span></td>
+      <td><button class="link-btn" data-cam="${c.id}">Edit</button></td></tr>`).join("")}</tbody></table></div></section>`;
+  view().querySelectorAll("[data-cam]").forEach(el => el.addEventListener("click", () => openCamModal(+el.dataset.cam)));
+}
+
+function renderAdmin(){
+  mountShell("admin");
+  if (!hasRole("admin")){
+    view().innerHTML = `<div class="restricted"><div class="icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
+      <h2>Akses ditolak</h2><p>Akun ini tidak punya role <span class="mono">admin</span>.</p></div>`;
+    return;
+  }
+  const draw = () => {
+    view().querySelector("#userTbody").innerHTML = USERS.map(u => {
+      const RB = { admin: "warning", supervisor: "success", operator: "muted" };
+      const badges = (u.realmRoles || []).filter(r => r in RB).map(r => `<span class="badge ${RB[r]}">${r}</span>`).join(" ");
+      return `<tr><td class="mono">${u.username}</td><td>${[u.firstName, u.lastName].filter(Boolean).join(" ") || "-"}</td>
+        <td>${u.email || "-"}</td><td>${badges || "-"}</td>
+        <td>${u.enabled ? `<span class="badge success">Aktif</span>` : `<span class="badge muted">Nonaktif</span>`}</td>
+        <td><button class="link-btn" data-toggle="${u.id}">${u.enabled ? "Nonaktifkan" : "Aktifkan"}</button></td></tr>`;
+    }).join("");
+    view().querySelectorAll("[data-toggle]").forEach(el => el.addEventListener("click", () => {
+      const u = USERS.find(x => x.id === el.dataset.toggle); u.enabled = !u.enabled;
+      toast(`User ${u.username} ${u.enabled ? "diaktifkan" : "dinonaktifkan"}.`); draw();
+    }));
+  };
+  view().innerHTML = `
+    <div class="page-head"><h2>Manajemen User</h2><p>Akun platform &amp; hak akses — tersinkron ke Keycloak.</p></div>
+    <section class="panel">
+      <div class="panel-head"><h2>User Platform</h2><button class="action-btn" id="addUserBtn">+ Tambah User</button></div>
+      <div class="panel-body table-wrap"><table><thead><tr><th>Username</th><th>Nama</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr></thead>
+      <tbody id="userTbody"></tbody></table></div>
+    </section>`;
+  draw();
+  document.getElementById("addUserBtn").addEventListener("click", openUserModal);
+  window._redrawAdmin = draw;
+}
+
+/* ================================================================
+   CASE DETAIL MODAL
+   ================================================================ */
+let _case = null;
+function openCase(id){
+  _case = VIOLATIONS.find(v => v.id === id);
+  renderCaseModal();
+}
+function closeCase(){ document.getElementById("caseModalRoot").innerHTML = ""; _case = null; }
+function refreshCurrentView(){ route(location.hash); }
+
+function renderCaseModal(){
+  const v = _case;
+  const catLabel = v.category === "vehicle" ? "Vehicle Violation" : "APD Detection";
+  const snap = `<div class="snapshot-box"><img src="${snapshotFor(v)}" alt="Snapshot pelanggaran"></div>`;
+  const grid = `<div class="detail-grid">
+    <div><div class="k">Kategori</div><div class="v">${catLabel}</div></div>
+    <div><div class="k">Kamera</div><div class="v">${v.camera_name}</div></div>
+    <div><div class="k">Waktu Deteksi</div><div class="v">${fmtFull(v.created_at)}</div></div>
+  </div>`;
+  let body;
+  if (!v.is_case){
+    body = `${snap}${grid}<div style="display:flex;justify-content:flex-end;"><button class="btn-primary" id="promoteBtn">Jadikan Kasus Investigasi</button></div>`;
+  } else {
+    const cm = canManage();
+    const steps = ["baru","diproses","selesai"].map(s => {
+      const dis = s === "selesai" && !cm;
+      return `<button class="status-step${v.status === s ? " active-" + s : ""}" ${dis ? "disabled" : ""} data-status="${s}">${{baru:"Baru",diproses:"Diproses",selesai:"Selesai"}[s]}</button>`;
+    }).join("");
+    const assign = cm
+      ? `<select id="assignSel"><option value="">Belum ditugaskan</option>${OPERATORS.map(o => `<option value="${o}" ${v.assigned_to === o ? "selected" : ""}>${o}</option>`).join("")}</select>`
+      : `<div class="readonly-note">${v.assigned_to || "Belum ditugaskan"} <span class="hint">&middot; hanya Supervisor/Admin yang bisa mengubah</span></div>`;
+    const notes = v.notes.length
+      ? `<div class="notes-list">${v.notes.map(n => `<div class="note-item"><div class="author">${n.author} <span class="time">&middot; ${fmtFull(n.created_at)}</span></div><div class="text">${esc(n.text)}</div></div>`).join("")}</div>`
+      : `<div style="font-size:0.85rem;color:var(--text-muted);">Belum ada catatan.</div>`;
+    body = `${snap}${grid}
+      <div style="margin-bottom:1.25rem;"><div style="font-size:0.78rem;font-weight:600;margin-bottom:0.5rem;">Status Penanganan</div><div class="status-stepper">${steps}</div></div>
+      <div style="margin-bottom:1.25rem;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:0.4rem;">Ditugaskan ke</label>${assign}</div>
+      <div style="margin-bottom:1.25rem;"><div style="font-size:0.78rem;font-weight:600;margin-bottom:0.5rem;">Catatan Investigasi</div>${notes}
+        <form class="note-form" id="noteForm"><input type="text" id="noteInput" placeholder="Tambah catatan..." required><button type="submit" class="btn-primary">Kirim</button></form></div>
+      <div style="display:flex;justify-content:flex-end;border-top:1px solid var(--border);padding-top:1rem;">
+        <button class="link-btn" style="color:var(--text-muted);" id="unpromoteBtn">Batalkan status kasus (kembalikan jadi alert biasa)</button></div>`;
+  }
+  document.getElementById("caseModalRoot").innerHTML = `
+    <div class="modal-overlay" id="caseOverlay">
+      <div class="modal wide">
+        <div class="modal-head">
+          <div><h3>${v.is_case ? `Detail Kasus — CASE-${String(v.id).padStart(4,"0")}` : "Detail Alert"}</h3>
+            <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.15rem;">${v.label}</div></div>
+          <button class="modal-close" data-close>&times;</button>
+        </div>
+        <div class="modal-body">${body}</div>
+      </div>
+    </div>`;
+  document.getElementById("caseOverlay").addEventListener("click", e => {
+    if (e.target.id === "caseOverlay" || e.target.dataset.close !== undefined) closeCase();
+  });
+  const pb = document.getElementById("promoteBtn");
+  if (pb) pb.addEventListener("click", () => { v.is_case = true; v.status = "baru"; toast(`Alert dipromosikan → CASE-${String(v.id).padStart(4,"0")}`); renderCaseModal(); refreshCurrentView(); });
+  const ub = document.getElementById("unpromoteBtn");
+  if (ub) ub.addEventListener("click", () => { v.is_case = false; v.status = "baru"; v.assigned_to = null; toast("Kasus dikembalikan jadi alert biasa."); renderCaseModal(); refreshCurrentView(); });
+  document.querySelectorAll(".status-step").forEach(b => b.addEventListener("click", () => {
+    if (b.disabled) return;
+    if (v.status === "baru" && b.dataset.status !== "baru" && !v.responded_at) v.responded_at = new Date().toISOString();
+    v.status = b.dataset.status; toast(`Status → ${{baru:"Baru",diproses:"Diproses",selesai:"Selesai"}[v.status]}`); renderCaseModal(); refreshCurrentView();
+  }));
+  const as = document.getElementById("assignSel");
+  if (as) as.addEventListener("change", () => { v.assigned_to = as.value || null; toast(v.assigned_to ? `Ditugaskan ke ${v.assigned_to}` : "Penugasan dilepas"); refreshCurrentView(); });
+  const nf = document.getElementById("noteForm");
+  if (nf) nf.addEventListener("submit", e => {
+    e.preventDefault();
+    const txt = document.getElementById("noteInput").value.trim(); if (!txt) return;
+    v.notes.push({ author: Auth.name, text: txt, created_at: new Date().toISOString() });
+    renderCaseModal();
+  });
+}
+
+/* ================================================================
+   CAMERA LIGHTBOX
+   ================================================================ */
+function openLightbox(id){
+  const c = CAMERAS.find(x => x.id === id);
+  document.getElementById("cameraLightboxRoot").innerHTML = `
+    <div class="modal-overlay camera-lightbox" id="lbOverlay">
+      <div class="modal">
+        <div class="modal-head"><div><h3>${c.name}</h3><div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.15rem;">${c.location}</div></div>
+          <button class="modal-close" id="lbClose">&times;</button></div>
+        <div class="modal-body">${cameraFeedHtml(c, true)}</div>
+      </div>
+    </div>`;
+  const close = () => document.getElementById("cameraLightboxRoot").innerHTML = "";
+  document.getElementById("lbClose").addEventListener("click", close);
+  document.getElementById("lbOverlay").addEventListener("click", e => { if (e.target.id === "lbOverlay") close(); });
+}
+
+/* ================================================================
+   CAMERA EDIT MODAL
+   ================================================================ */
+function openCamModal(id){
+  const c = CAMERAS.find(x => x.id === id);
+  document.getElementById("camModalRoot").innerHTML = `
+    <div class="modal-overlay" id="camOverlay">
+      <div class="modal">
+        <div class="modal-head"><h3>Edit — ${c.name}</h3><button class="modal-close" data-close>&times;</button></div>
+        <form id="camForm"><div class="modal-body">
+          <div class="field"><label>Nama Kamera</label><input id="cName" value="${esc(c.name)}"></div>
+          <div class="field"><label>Lokasi</label><input id="cLoc" value="${esc(c.location)}"></div>
+          <div class="field"><label>Kategori Deteksi</label><select id="cCat">
+            <option value="apd" ${c.category === "apd" ? "selected" : ""}>APD Detection</option>
+            <option value="vehicle" ${c.category === "vehicle" ? "selected" : ""}>Vehicle Violation</option></select></div>
+          <div class="field"><label>RTSP URL (opsional)</label><input placeholder="rtsp://user:pass@${c.ip}:554/stream1"></div>
+        </div>
+        <div class="modal-actions"><button type="button" class="btn-secondary" data-close>Batal</button><button type="submit" class="btn-primary">Simpan Perubahan</button></div>
+        </form>
+      </div>
+    </div>`;
+  const close = () => document.getElementById("camModalRoot").innerHTML = "";
+  document.getElementById("camOverlay").addEventListener("click", e => { if (e.target.id === "camOverlay" || e.target.dataset.close !== undefined) close(); });
+  document.getElementById("camForm").addEventListener("submit", e => {
+    e.preventDefault();
+    c.name = document.getElementById("cName").value.trim();
+    c.location = document.getElementById("cLoc").value.trim();
+    c.category = document.getElementById("cCat").value;
+    close(); toast("Perubahan kamera disimpan."); route(location.hash);
+  });
+}
+
+/* ================================================================
+   ADD USER MODAL
+   ================================================================ */
+function openUserModal(){
+  document.getElementById("userModalRoot").innerHTML = `
+    <div class="modal-overlay" id="userOverlay">
+      <div class="modal">
+        <div class="modal-head"><h3>Tambah User</h3><button class="modal-close" data-close>&times;</button></div>
+        <form id="userForm"><div class="modal-body">
+          <div class="field"><label>Username</label><input id="nUser" required placeholder="mis. operator2"></div>
+          <div class="field"><label>Nama Depan</label><input id="nFirst" placeholder="mis. Budi"></div>
+          <div class="field"><label>Nama Belakang</label><input id="nLast" placeholder="mis. Santoso"></div>
+          <div class="field"><label>Email</label><input id="nEmail" type="email" placeholder="budi.santoso@pertamina-ep.local"></div>
+          <div class="field"><label>Role</label><select id="nRole">
+            <option value="operator">Operator — memantau &amp; acknowledge pelanggaran</option>
+            <option value="supervisor">Supervisor — assign &amp; menutup kasus</option>
+            <option value="admin">Admin — kelola user &amp; pengaturan sistem</option></select></div>
+          <div class="field"><label>Password Awal</label><input id="nPass" required placeholder="Password sementara"></div>
+          <div class="field checkbox-row"><input type="checkbox" id="nTemp" checked><label for="nTemp">Wajib ganti password saat login pertama</label></div>
+        </div>
+        <div class="modal-actions"><button type="button" class="btn-secondary" data-close>Batal</button><button type="submit" class="btn-primary">Buat User</button></div>
+        </form>
+      </div>
+    </div>`;
+  const close = () => document.getElementById("userModalRoot").innerHTML = "";
+  document.getElementById("userOverlay").addEventListener("click", e => { if (e.target.id === "userOverlay" || e.target.dataset.close !== undefined) close(); });
+  document.getElementById("userForm").addEventListener("submit", e => {
+    e.preventDefault();
+    const uname = document.getElementById("nUser").value.trim();
+    if (USERS.some(u => u.username === uname)){ toast("Username sudah terdaftar."); return; }
+    USERS.push({
+      id: "u-" + uname, username: uname,
+      firstName: document.getElementById("nFirst").value.trim(),
+      lastName: document.getElementById("nLast").value.trim(),
+      email: document.getElementById("nEmail").value.trim(),
+      realmRoles: [document.getElementById("nRole").value], enabled: true,
+    });
+    close(); toast(`User ${uname} dibuat & terdaftar di Keycloak.`);
+    if (window._redrawAdmin) window._redrawAdmin();
+  });
+}
+
+/* ================================================================
+   ROUTER
+   ================================================================ */
+function route(hash){
+  const key = (hash || "#dashboard").replace("#", "") || "dashboard";
+  const admin = hasRole("admin");
+  if ((key === "settings" || key === "admin") && !admin){ location.hash = "#dashboard"; return; }
+  ({
+    dashboard: renderDashboard,
+    apd: () => renderDetection("apd"),
+    vehicle: () => renderDetection("vehicle"),
+    cases: renderCases,
+    reports: renderReports,
+    settings: renderSettings,
+    admin: renderAdmin,
+  }[key] || renderDashboard)();
+  window.scrollTo(0, 0);
+}
+window.addEventListener("hashchange", () => route(location.hash));
+
+/* ================================================================
+   SIMULATED LIVE FEED
+   ================================================================ */
+function simulateDetection(){
+  const cam = pick(CAMERAS);
+  const v = makeViolation(cam.id, new Date());
+  VIOLATIONS.unshift(v);
+  const key = (location.hash || "#dashboard").replace("#", "");
+  if (["dashboard", "apd", "vehicle"].includes(key)) route(location.hash);
+  const flash = document.getElementById("cam-" + cam.id);
+  if (flash){ flash.classList.remove("cam-flash"); void flash.offsetWidth; flash.classList.add("cam-flash"); }
+  toast(`Deteksi baru: ${v.label} — ${cam.name}`);
+}
+
+/* ================================================================
+   LOGIN GATE
+   ================================================================ */
+document.getElementById("rolePick").addEventListener("change", e => {
+  document.querySelectorAll(".role-opt").forEach(o => o.classList.toggle("sel", o.contains(e.target) && e.target.checked));
+});
+document.querySelectorAll(".role-opt").forEach(o => o.addEventListener("click", () => {
+  const r = o.querySelector("input"); r.checked = true;
+  document.querySelectorAll(".role-opt").forEach(x => x.classList.toggle("sel", x === o));
+}));
+document.getElementById("enterBtn").addEventListener("click", () => {
+  const role = document.querySelector('input[name="role"]:checked').value;
+  Auth = { ...ROLE_USER[role] };
+  document.getElementById("loginGate").hidden = true;
+  document.getElementById("appRoot").hidden = false;
+  document.getElementById("appDemoTag").hidden = false;
+  if (!location.hash) location.hash = "#dashboard"; else route(location.hash);
+  setInterval(simulateDetection, 9000);
+});
+</script>
+</body>
+</html>

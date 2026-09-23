@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dashboard — Smart CCTV AI</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="styles.css" />
+<style>.chart-label{ font-size:11px; fill:var(--text-muted); font-family:"Inter",sans-serif; }</style>
+</head>
+<body>
+<header>
+  <div id="shell-header"></div>
+</header>
+<div class="app-layout">
+  <nav class="sidebar" id="shell-sidebar"></nav>
+  <main>
+    <div class="page-head">
+      <h2>Executive Dashboard</h2>
+      <p>Ringkasan seluruh area operasi hari ini.</p>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-tile"><div class="label">Total Kamera</div><div class="value" id="statCameras">–</div></div>
+      <div class="kpi-tile"><div class="label">Total Pelanggaran</div><div class="value" id="statTotal">–</div></div>
+      <div class="kpi-tile"><div class="label">Kasus Terbuka</div><div class="value" id="statOpen" style="color:var(--critical);">–</div></div>
+      <div class="kpi-tile"><div class="label">24 Jam Terakhir</div><div class="value" id="statLast24">–</div></div>
+    </div>
+
+    <div class="category-cards">
+      <div class="category-card">
+        <div class="head">
+          <div class="left"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B57712" stroke-width="1.8"><path d="M4 15.5V15a8 8 0 0 1 16 0v0.5"/><rect x="3" y="15.5" width="18" height="3" rx="1.2"/><path d="M12 6.5v2.2"/></svg> APD Detection</div>
+          <a href="apd.html" style="font-size:0.8rem;font-weight:600;">Lihat detail &rarr;</a>
+        </div>
+        <div class="nums">
+          <div><div class="n" id="apdCameraCount">–</div><div class="l">kamera terpantau</div></div>
+          <div><div class="n" id="apdViolationCount" style="color:#B57712;">–</div><div class="l">pelanggaran tercatat</div></div>
+        </div>
+      </div>
+      <div class="category-card">
+        <div class="head">
+          <div class="left"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B8021F" stroke-width="1.8"><rect x="2" y="6" width="11" height="10" rx="1"/><path d="M13 10h4l3 3v3h-7z"/><circle cx="6.5" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/></svg> Vehicle Violation</div>
+          <a href="vehicle.html" style="font-size:0.8rem;font-weight:600;">Lihat detail &rarr;</a>
+        </div>
+        <div class="nums">
+          <div><div class="n" id="vehicleCameraCount">–</div><div class="l">kamera terpantau</div></div>
+          <div><div class="n" id="vehicleViolationCount" style="color:#B8021F;">–</div><div class="l">pelanggaran tercatat</div></div>
+        </div>
+      </div>
+    </div>
+
+    <section class="panel" style="padding:1.25rem 1.5rem;margin-bottom:1.25rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+        <h2 style="font-size:0.92rem;font-weight:600;margin:0;">Tren Pelanggaran Mingguan</h2>
+        <div style="display:flex;gap:1.2rem;">
+          <span style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--text-muted);"><span style="width:9px;height:9px;border-radius:2px;background:#B57712;display:inline-block;"></span>APD Detection</span>
+          <span style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--text-muted);"><span style="width:9px;height:9px;border-radius:2px;background:#B8021F;display:inline-block;"></span>Vehicle Violation</span>
+        </div>
+      </div>
+      <svg id="trendChart" viewBox="0 0 900 200" width="100%" style="display:block;overflow:visible;"></svg>
+    </section>
+
+    <section class="panel" style="margin-bottom:1.25rem;">
+      <div class="panel-head"><h2>Area dengan Pelanggaran Terbanyak</h2></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Kamera</th><th>Lokasi</th><th style="width:180px;">Jumlah</th></tr></thead>
+          <tbody id="topLocationsTable"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Live Alert Feed</h2>
+        <a href="cases.html" style="font-size:0.8rem;font-weight:600;">Lihat semua kasus &rarr;</a>
+      </div>
+      <div class="panel-body" id="feedList" style="padding:0.5rem 1.1rem;">
+        <div class="feed-empty" style="font-size:0.85rem;color:var(--text-muted);padding:1rem 0;">Menunggu data...</div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script src="shell.js"></script>
+<script>
+const Auth = createAuthClient({ realm: window.APP_CONFIG.realm, clientId: window.APP_CONFIG.clientId, storageKey: "vg_tokens" });
+let cameras = [];
+const DAY_LABELS = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
+
+function fmtTime(iso){ return new Date(iso).toLocaleString("id-ID", { day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit" }); }
+
+// Same bar-chart builder as Laporan & Analitik — one visual language for
+// "pelanggaran mingguan" wherever it's shown (Executive Dashboard here,
+// full trend + range picker there).
+function buildTrendSvg(daily){
+  const W = 900, H = 200, padL = 40, padR = 20, padB = 34, padT = 10;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const maxVal = Math.max(1, ...daily.flatMap(d => [d.apd, d.vehicle]));
+  const niceMax = Math.ceil(maxVal / 5) * 5 || 5;
+  const n = daily.length || 1;
+  const groupW = plotW / n;
+  const barW = Math.min(22, groupW * 0.32);
+
+  let svg = "";
+  for (let i = 0; i <= 4; i++){
+    const y = padT + plotH - (plotH * i / 4);
+    svg += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="var(--border)" stroke-width="1"/>`;
+    svg += `<text class="chart-label" x="${padL - 8}" y="${y + 4}" text-anchor="end">${Math.round(niceMax * i / 4)}</text>`;
+  }
+  daily.forEach((d, i) => {
+    const cx = padL + groupW * i + groupW / 2;
+    const apdH = (d.apd / niceMax) * plotH;
+    const vehH = (d.vehicle / niceMax) * plotH;
+    svg += `<rect x="${cx - barW - 2}" y="${padT + plotH - apdH}" width="${barW}" height="${apdH}" rx="3" fill="#B57712"/>`;
+    svg += `<rect x="${cx + 2}" y="${padT + plotH - vehH}" width="${barW}" height="${vehH}" rx="3" fill="#B8021F"/>`;
+    const dayLabel = DAY_LABELS[new Date(d.date).getDay()];
+    svg += `<text class="chart-label" x="${cx}" y="${H - padB + 18}" text-anchor="middle">${dayLabel}</text>`;
+  });
+  return svg;
+}
+
+function topLocationRowHtml(c){
+  const color = c.category === "vehicle" ? "#B8021F" : "#B57712";
+  const soft = c.category === "vehicle" ? "#FBE3E3" : "#FBF1DF";
+  return `
+    <tr>
+      <td style="font-weight:600;">${c.camera_name}</td>
+      <td style="color:var(--text-muted);">${c.location || "-"}</td>
+      <td><span class="badge" style="background:${soft};color:${color};">${c.count} pelanggaran</span></td>
+    </tr>`;
+}
+
+async function loadReportSummary(){
+  // Fixed rolling 7-day window for the at-a-glance dashboard widget —
+  // the actual date-range picker lives on Laporan & Analitik (ADR-0017).
+  const today = new Date();
+  const weekAgo = new Date(today);
+  weekAgo.setDate(weekAgo.getDate() - 6);
+  const iso = d => d.toISOString().slice(0, 10);
+  const res = await Auth.apiFetch(`/api/reports/summary?start=${iso(weekAgo)}&end=${iso(today)}`);
+  const r = await res.json();
+  document.getElementById("trendChart").innerHTML = buildTrendSvg(r.daily);
+  const top5 = r.by_camera.slice(0, 5);
+  document.getElementById("topLocationsTable").innerHTML = top5.map(topLocationRowHtml).join("")
+    || `<tr><td colspan="3" style="text-align:center;color:var(--text-muted);">Belum ada data</td></tr>`;
+}
+
+function feedItemHtml(evt){
+  const sevColor = evt.severity === "critical" ? "var(--critical)" : "var(--warning)";
+  return `
+    <div style="display:flex;align-items:center;gap:0.75rem;padding:0.85rem 0;border-bottom:1px solid var(--border);">
+      <span style="width:0.45rem;height:0.45rem;border-radius:50%;flex:none;background:${sevColor};"></span>
+      <div style="flex:1;"><span style="font-weight:600;font-size:0.87rem;">${evt.label}</span><span style="font-size:0.82rem;color:var(--text-muted);"> &middot; ${evt.camera_name || "Kamera #" + evt.camera_id}</span></div>
+      <div class="mono" style="font-size:0.78rem;color:var(--text-muted);">${fmtTime(evt.created_at)}</div>
+    </div>`;
+}
+
+async function loadCameras(){
+  const res = await Auth.apiFetch("/api/cameras");
+  cameras = await res.json();
+  document.getElementById("apdCameraCount").textContent = cameras.filter(c => c.category === "apd").length;
+  document.getElementById("vehicleCameraCount").textContent = cameras.filter(c => c.category === "vehicle").length;
+}
+
+async function loadStats(){
+  const res = await Auth.apiFetch("/api/stats");
+  const s = await res.json();
+  document.getElementById("statCameras").textContent = s.total_cameras;
+  document.getElementById("statTotal").textContent = s.total_violations;
+  document.getElementById("statOpen").textContent = s.open_cases;
+  document.getElementById("statLast24").textContent = s.last_24h;
+  document.getElementById("apdViolationCount").textContent = s.by_type.no_helmet || 0;
+  document.getElementById("vehicleViolationCount").textContent = s.by_type.truck_bed_rider || 0;
+}
+
+async function loadFeed(){
+  const res = await Auth.apiFetch("/api/violations?limit=8");
+  const rows = await res.json();
+  const list = document.getElementById("feedList");
+  list.innerHTML = rows.map(feedItemHtml).join("") || `<div class="feed-empty" style="font-size:0.85rem;color:var(--text-muted);padding:1rem 0;">Belum ada pelanggaran.</div>`;
+}
+
+function connectWs(){
+  const wsProto = location.protocol === "https:" ? "wss:" : "ws:";
+  const ws = new WebSocket(`${wsProto}//${location.host}/ws/live?token=${encodeURIComponent(Auth.accessToken)}`);
+  ws.onclose = () => setTimeout(connectWs, 3000);
+  ws.onerror = () => ws.close();
+  ws.onmessage = (msg) => {
+    const evt = JSON.parse(msg.data);
+    if (evt.event === "violation"){ loadStats(); loadFeed(); loadReportSummary(); }
+  };
+}
+
+(async () => {
+  try {
+    if (!(await Auth.init())) return;
+    Shell.mount({ active: "dashboard", auth: Auth });
+    await loadCameras();
+    await loadStats();
+    await loadFeed();
+    await loadReportSummary();
+    connectWs();
+  } catch (err) { Shell.showFatalError(err); }
+})();
+</script>
+</body>
+</html>

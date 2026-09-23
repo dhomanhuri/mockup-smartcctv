@@ -1,0 +1,15 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+torch==2.5.1+cpu
+torchvision==0.20.1+cpu
+ultralytics==8.3.40
+requests==2.32.3
+
+# opencv-python-headless is force-reinstalled after this file in the
+# Dockerfile, on purpose: `ultralytics` hard-depends on plain
+# `opencv-python` (with GUI/X11 bindings we don't want in a headless
+# container), and pip has no clean way to substitute one PyPI package
+# for another during dependency resolution — so both would otherwise be
+# downloaded and whichever installs last wins by file overwrite anyway.
+# Doing that overwrite explicitly, instead of relying on install order,
+# is the same outcome without depending on requirements.txt line order.

@@ -1,0 +1,33 @@
+logLevel: info
+
+api: yes
+apiAddress: :9997
+
+rtsp: yes
+rtspAddress: :8554
+protocols: [tcp]
+
+hls: yes
+hlsAddress: :8888
+hlsAllowOrigin: '*'
+hlsVariant: lowLatency
+
+webrtc: no
+rtmp: no
+srt: no
+
+# The API port (9997) is never published to the host — only reachable from
+# other containers on the docker network (the backend, to register new
+# camera paths) — so it's safe to allow it here without extra credentials.
+authInternalUsers:
+  - user: any
+    pass:
+    ips: []
+    permissions:
+      - action: publish
+      - action: read
+      - action: playback
+      - action: api
+
+paths:
+  all_others:

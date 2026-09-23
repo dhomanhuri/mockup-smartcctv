@@ -1,0 +1,64 @@
+# The product itself: API, dashboard, and the inference worker. All three
+# lean on the databases and identity provider defined in
+# infra/docker-compose.yml; backend is stateless itself now — violation
+# snapshot evidence lives in the `minio` service (see ADR-0017), not a
+# volume owned here.
+#
+# Not meant to be run standalone (depends_on references services like
+# `postgres` that live in infra/docker-compose.yml) — use the root
+# docker-compose.yml, which includes this file alongside
+# infra/docker-compose.yml.
+
+services:
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080/auth
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM}
+      KEYCLOAK_ISSUER: http://${KC_HOSTNAME}/auth/realms/${KEYCLOAK_REALM}
+      MEDIAMTX_API_URL: http://mediamtx:9997
+      KC_USER_MANAGER_CLIENT_ID: ${KC_USER_MANAGER_CLIENT_ID}
+      KC_USER_MANAGER_SECRET: ${KC_USER_MANAGER_SECRET}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USE_TLS: ${SMTP_USE_TLS}
+      NOTIFY_EMAIL_FROM: ${NOTIFY_EMAIL_FROM}
+      NOTIFY_EMAIL_TO: ${NOTIFY_EMAIL_TO}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET: ${MINIO_BUCKET}
+
+  # Real pretrained-model inference — see apps/inference/inference.py and
+  # ADR-0010. Replaces the earlier simulated inference-sim service (ADR-0003),
+  # since deleted entirely — see ADR-0010 for the migration record.
+  inference:
+    build: ./inference
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - mediamtx
+    environment:
+      BACKEND_URL: http://backend:8000
+      MEDIAMTX_RTSP_BASE: rtsp://mediamtx:8554
+      SAMPLE_INTERVAL_SECONDS: "4"
+      COOLDOWN_SECONDS: "60"
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      # Consumed by docker-entrypoint.sh (envsubst → config.js) so the
+      # realm/client id the frontend points at is config, not a literal
+      # string baked into every HTML page — see ADR-0016.
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM}
+      KC_CLIENT_ID: ${KC_CLIENT_ID}

@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Case Violation — Smart CCTV AI</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<header><div id="shell-header"></div></header>
+<div class="app-layout">
+  <nav class="sidebar" id="shell-sidebar"></nav>
+  <main>
+    <div class="page-head">
+      <h2>Case Violation</h2>
+      <p>Semua kasus pelanggaran lintas kategori — status penanganan &amp; penanggung jawab.</p>
+    </div>
+
+    <div class="tabs" id="filterTabs" style="margin-bottom:1.25rem;">
+      <div class="tab active" data-filter="all">Semua</div>
+      <div class="tab" data-filter="apd">APD</div>
+      <div class="tab" data-filter="vehicle">Vehicle</div>
+      <div class="tab" data-filter="open">Kasus Terbuka</div>
+    </div>
+
+    <section class="panel">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Case ID</th><th>Waktu</th><th>Kategori</th><th>Kamera</th><th>Status</th><th>Ditugaskan</th><th></th></tr></thead>
+          <tbody id="violationTable"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="caseModalRoot"></div>
+
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script src="shell.js"></script>
+<script src="case-modal.js"></script>
+<script>
+const Auth = createAuthClient({ realm: window.APP_CONFIG.realm, clientId: window.APP_CONFIG.clientId, storageKey: "vg_tokens" });
+let activeFilter = "all";
+
+function fmtTime(iso){ return new Date(iso).toLocaleString("id-ID", { day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit" }); }
+const STATUS_META = {
+  baru: { label: "Baru", badge: "muted" },
+  diproses: { label: "Diproses", badge: "warning" },
+  selesai: { label: "Selesai", badge: "success" },
+};
+
+function rowHtml(v){
+  const st = STATUS_META[v.status];
+  const catLabel = v.category === "vehicle" ? "Vehicle" : "APD";
+  return `
+    <tr class="row-click" onclick="CaseModal.open(${v.id})" style="cursor:pointer;">
+      <td class="mono" style="font-weight:600;">CASE-${String(v.id).padStart(4, "0")}</td>
+      <td class="mono">${fmtTime(v.created_at)}</td>
+      <td>${catLabel}</td>
+      <td>${v.camera_name || "Kamera #" + v.camera_id}</td>
+      <td><span class="badge ${st.badge}">${st.label}</span></td>
+      <td style="color:var(--text-muted);">${v.assigned_to || "Belum ditugaskan"}</td>
+      <td><button class="link-btn" onclick="event.stopPropagation();CaseModal.open(${v.id})">Lihat Detail</button></td>
+    </tr>`;
+}
+
+async function loadViolations(){
+  // Only promoted cases show here (ADR-0012) — every raw AI detection is
+  // an alert first; APD/Vehicle Detection's "Riwayat Pelanggaran" is
+  // where the full unfiltered log lives.
+  let url = "/api/violations?limit=100&is_case=true";
+  if (activeFilter === "apd" || activeFilter === "vehicle") url += `&category=${activeFilter}`;
+  const res = await Auth.apiFetch(url);
+  let rows = await res.json();
+  if (activeFilter === "open") rows = rows.filter(r => r.status !== "selesai");
+  document.getElementById("violationTable").innerHTML = rows.map(rowHtml).join("") || `<tr><td colspan="7" style="text-align:center;color:var(--text-muted);">Belum ada kasus. Buka sebuah alert dari halaman APD/Vehicle Detection lalu klik "Jadikan Kasus Investigasi" untuk mulai melacaknya di sini.</td></tr>`;
+}
+
+document.getElementById("filterTabs").addEventListener("click", (e) => {
+  const tab = e.target.closest(".tab");
+  if (!tab) return;
+  document.querySelectorAll("#filterTabs .tab").forEach(t => t.classList.remove("active"));
+  tab.classList.add("active");
+  activeFilter = tab.dataset.filter;
+  loadViolations();
+});
+
+function connectWs(){
+  const wsProto = location.protocol === "https:" ? "wss:" : "ws:";
+  const ws = new WebSocket(`${wsProto}//${location.host}/ws/live?token=${encodeURIComponent(Auth.accessToken)}`);
+  ws.onclose = () => setTimeout(connectWs, 3000);
+  ws.onerror = () => ws.close();
+  ws.onmessage = (msg) => { if (JSON.parse(msg.data).event === "violation") loadViolations(); };
+}
+
+(async () => {
+  try {
+    if (!(await Auth.init())) return;
+    Shell.mount({ active: "cases", auth: Auth });
+    CaseModal.init(Auth, { onChange: loadViolations });
+    await loadViolations();
+    connectWs();
+  } catch (err) { Shell.showFatalError(err); }
+})();
+</script>
+</body>
+</html>

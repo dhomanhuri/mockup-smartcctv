@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Vehicle Violation — Smart CCTV AI</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<script src="hls.min.js"></script>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<header><div id="shell-header"></div></header>
+<div class="app-layout">
+  <nav class="sidebar" id="shell-sidebar"></nav>
+  <main>
+    <div class="page-head">
+      <h2>Vehicle Violation</h2>
+      <p>Deteksi penumpang di bak kendaraan pada zona kamera terkait.</p>
+    </div>
+
+    <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);">
+      <div class="kpi-tile"><div class="label">Kamera Terpantau</div><div class="value" id="statCams">–</div></div>
+      <div class="kpi-tile"><div class="label">Pelanggaran (24 Jam)</div><div class="value" id="statToday">–</div></div>
+      <div class="kpi-tile"><div class="label">Kasus Terbuka</div><div class="value" id="statOpen" style="color:#B8021F;">–</div></div>
+    </div>
+
+    <div class="camera-grid" id="cameraGrid"></div>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Riwayat Vehicle Violation</h2></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Waktu</th><th>Kamera</th><th>Status</th><th></th></tr></thead>
+          <tbody id="violationTable"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="caseModalRoot"></div>
+<div id="cameraLightboxRoot"></div>
+
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script src="shell.js"></script>
+<script src="case-modal.js"></script>
+<script>
+const Auth = createAuthClient({ realm: window.APP_CONFIG.realm, clientId: window.APP_CONFIG.clientId, storageKey: "vg_tokens" });
+let cameras = [];
+const hlsInstances = {};
+
+function fmtTime(iso){ return new Date(iso).toLocaleString("id-ID", { day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit" }); }
+const STATUS_BADGE = { baru: "warning", diproses: "warning", selesai: "success" };
+const STATUS_LABEL = { baru: "Baru", diproses: "Diproses", selesai: "Selesai" };
+
+function attachStream(videoEl, streamPath, instanceKey){
+  // instanceKey defaults to streamPath (the small tile) — the lightbox
+  // passes "lightbox" explicitly so opening it attaches a second,
+  // independent hls.js instance instead of destroying the tile's own
+  // (MediaMTX happily serves the same HLS path to multiple readers).
+  const key = instanceKey || streamPath;
+  const src = `/hls/${streamPath}/index.m3u8`;
+  if (window.Hls && Hls.isSupported()){
+    if (hlsInstances[key]) hlsInstances[key].destroy();
+    const hls = new Hls({ lowLatencyMode: true });
+    hls.loadSource(src);
+    hls.attachMedia(videoEl);
+    hlsInstances[key] = hls;
+  } else if (videoEl.canPlayType("application/vnd.apple.mpegurl")){
+    videoEl.src = src;
+  }
+  videoEl.play().catch(()=>{});
+}
+
+function cameraCardHtml(c){
+  return `
+    <div class="camera-card" id="cam-${c.id}" onclick="openCameraLightbox(${c.id})">
+      <div class="camera-feed">
+        ${c.stream_path
+          ? `<span class="live-badge on">LIVE</span><span class="expand-hint"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></span><video id="video-${c.id}" muted autoplay playsinline></video>`
+          : `<span class="live-badge">NO SIGNAL</span><div class="placeholder"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 8l4-3h6l2 3h4a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.2"/></svg><span>Belum ada stream</span></div>`}
+      </div>
+      <div class="camera-meta"><div class="name">${c.name}</div><div class="loc">${c.location || ""}</div></div>
+    </div>`;
+}
+
+window.openCameraLightbox = function(id){
+  const c = cameras.find(x => x.id === id);
+  if (!c || !c.stream_path) return;
+  document.getElementById("cameraLightboxRoot").innerHTML = `
+    <div class="modal-overlay camera-lightbox" id="camLightboxOverlay">
+      <div class="modal">
+        <div class="modal-head">
+          <div><h3>${c.name}</h3><div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.15rem;">${c.location || ""}</div></div>
+          <button class="modal-close" id="camLightboxClose">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="camera-feed"><span class="live-badge on">LIVE</span><video id="lightbox-video" muted autoplay playsinline controls></video></div>
+        </div>
+      </div>
+    </div>`;
+  attachStream(document.getElementById("lightbox-video"), c.stream_path, "lightbox");
+  const close = () => {
+    if (hlsInstances["lightbox"]) { hlsInstances["lightbox"].destroy(); delete hlsInstances["lightbox"]; }
+    document.getElementById("cameraLightboxRoot").innerHTML = "";
+  };
+  document.getElementById("camLightboxClose").addEventListener("click", close);
+  document.getElementById("camLightboxOverlay").addEventListener("click", (e) => { if (e.target.id === "camLightboxOverlay") close(); });
+};
+
+async function loadCameras(){
+  const res = await Auth.apiFetch("/api/cameras");
+  cameras = (await res.json()).filter(c => c.category === "vehicle");
+  document.getElementById("cameraGrid").innerHTML = cameras.map(cameraCardHtml).join("");
+  document.getElementById("statCams").textContent = cameras.length;
+  cameras.forEach(c => { if (c.stream_path){ const v = document.getElementById(`video-${c.id}`); if (v) attachStream(v, c.stream_path); } });
+}
+
+function rowHtml(v){
+  const statusCell = v.is_case
+    ? `<span class="badge ${STATUS_BADGE[v.status]}">Kasus &middot; ${STATUS_LABEL[v.status]}</span>`
+    : `<span class="badge muted">Alert</span>`;
+  return `
+    <tr class="row-click" onclick="CaseModal.open(${v.id})" style="cursor:pointer;">
+      <td class="mono">${fmtTime(v.created_at)}</td>
+      <td>${v.camera_name || "Kamera #" + v.camera_id}</td>
+      <td>${statusCell}</td>
+      <td><button class="link-btn" onclick="event.stopPropagation();CaseModal.open(${v.id})">Lihat Detail</button></td>
+    </tr>`;
+}
+
+async function loadViolations(){
+  const res = await Auth.apiFetch("/api/violations?category=vehicle&limit=50");
+  const rows = await res.json();
+  document.getElementById("violationTable").innerHTML = rows.map(rowHtml).join("") || `<tr><td colspan="4" style="text-align:center;color:var(--text-muted);">Belum ada data</td></tr>`;
+  document.getElementById("statOpen").textContent = rows.filter(r => r.is_case && r.status !== "selesai").length;
+  const since = Date.now() - 24*3600*1000;
+  document.getElementById("statToday").textContent = rows.filter(r => new Date(r.created_at).getTime() >= since).length;
+}
+
+function connectWs(){
+  const wsProto = location.protocol === "https:" ? "wss:" : "ws:";
+  const ws = new WebSocket(`${wsProto}//${location.host}/ws/live?token=${encodeURIComponent(Auth.accessToken)}`);
+  ws.onclose = () => setTimeout(connectWs, 3000);
+  ws.onerror = () => ws.close();
+  ws.onmessage = (msg) => {
+    const evt = JSON.parse(msg.data);
+    if (evt.event === "violation" && evt.category === "vehicle"){
+      loadViolations();
+      const camEl = document.getElementById(`cam-${evt.camera_id}`);
+      if (camEl){ camEl.classList.remove("cam-flash"); void camEl.offsetWidth; camEl.classList.add("cam-flash"); }
+    }
+  };
+}
+
+(async () => {
+  try {
+    if (!(await Auth.init())) return;
+    Shell.mount({ active: "vehicle", auth: Auth });
+    CaseModal.init(Auth, { onChange: loadViolations });
+    await loadCameras();
+    await loadViolations();
+    connectWs();
+  } catch (err) { Shell.showFatalError(err); }
+})();
+</script>
+</body>
+</html>

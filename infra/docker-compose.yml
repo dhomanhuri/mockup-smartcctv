@@ -1,0 +1,188 @@
+# Supporting infrastructure: databases, identity (Keycloak), streaming
+# (MediaMTX + synthetic demo camera), email catcher (Mailpit), and the
+# single-ingress reverse proxy. None of this is "the product" — it's what
+# the apps/ services run on top of.
+#
+# Not meant to be run standalone with `-f infra/docker-compose.yml` (the
+# apps depend on these service names existing in the same project) — use
+# the root docker-compose.yml, which includes this file alongside
+# apps/docker-compose.yml.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  postgres-keycloak:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${KC_DB_USERNAME}
+      POSTGRES_PASSWORD: ${KC_DB_PASSWORD}
+      POSTGRES_DB: ${KC_DB_NAME}
+    volumes:
+      - kcpgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${KC_DB_USERNAME}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.3
+    restart: unless-stopped
+    command: start-dev --import-realm --http-relative-path=/auth
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres-keycloak:5432/${KC_DB_NAME}
+      KC_DB_USERNAME: ${KC_DB_USERNAME}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_HOSTNAME: ${KC_HOSTNAME}
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY: edge
+      KC_PROXY_HEADERS: xforwarded
+      KC_HEALTH_ENABLED: "true"
+    volumes:
+      - ./keycloak/import:/opt/keycloak/data/import
+      - ./keycloak/themes/pertaminaep:/opt/keycloak/themes/pertaminaep
+    depends_on:
+      postgres-keycloak:
+        condition: service_healthy
+    ports:
+      # Native Keycloak console (master realm + realm management), kept off
+      # the app's port 80 on purpose — the app only needs the OIDC
+      # endpoints under /auth/realms/${KEYCLOAK_REALM}/*, not the admin UI.
+      - "8081:8080"
+
+  mailpit:
+    image: axllent/mailpit:v1.31.1
+    restart: unless-stopped
+    environment:
+      MP_DATABASE: /data/mailpit.db
+    volumes:
+      - mailpitdata:/data
+    ports:
+      - "8025:8025"
+
+  # Open-source S3-compatible object storage for violation snapshot
+  # evidence — see ADR-0017. Replaces the earlier plain-disk `snapshots`
+  # volume the backend used to own directly; apps/backend now talks to
+  # this over the docker network instead (see MINIO_* on the `backend`
+  # service in apps/docker-compose.yml).
+  minio:
+    image: minio/minio:RELEASE.2024-10-13T13-34-11Z
+    restart: unless-stopped
+    command: server /data --console-address ":9090"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - miniodata:/data
+    ports:
+      # Admin console only — kept off port 80 same as Keycloak/Mailpit;
+      # the S3 API port (9000) is never published, only reachable from
+      # inside the docker network (the backend).
+      - "9091:9090"
+
+  mediamtx:
+    image: bluenviron/mediamtx:1.21.0
+    restart: unless-stopped
+    volumes:
+      - ./mediamtx/mediamtx.yml:/mediamtx.yml
+    ports:
+      - "8554:8554"
+
+  # Five instances of the same image, one per demo camera — each loops a
+  # real, CC-licensed video clip (a still image for Parkiran Truk only,
+  # a deliberately empty/compliant baseline) into MediaMTX under that
+  # camera's stream_path, so both a human watching the tile and
+  # apps/inference/'s pretrained models see genuine motion, not a photo
+  # standing in for a live feed. See demo-camera/media/NOTICE.md and
+  # ADR-0013.
+  demo-camera-gerbang:
+    build: ./demo-camera
+    restart: unless-stopped
+    depends_on:
+      - mediamtx
+    environment:
+      MEDIAMTX_HOST: mediamtx
+      STREAM_PATH: demo-gerbang
+      CAMERA_LABEL: "GERBANG UTAMA"
+      MEDIA_FILE: /media/gerbang.mp4
+
+  demo-camera-produksi:
+    build: ./demo-camera
+    restart: unless-stopped
+    depends_on:
+      - mediamtx
+    environment:
+      MEDIAMTX_HOST: mediamtx
+      STREAM_PATH: demo-produksi
+      CAMERA_LABEL: "AREA PRODUKSI 1"
+      MEDIA_FILE: /media/produksi.mp4
+
+  demo-camera-workshop:
+    build: ./demo-camera
+    restart: unless-stopped
+    depends_on:
+      - mediamtx
+    environment:
+      MEDIAMTX_HOST: mediamtx
+      STREAM_PATH: demo-workshop
+      CAMERA_LABEL: "WORKSHOP"
+      MEDIA_FILE: /media/workshop.mp4
+
+  demo-camera-jalur:
+    build: ./demo-camera
+    restart: unless-stopped
+    depends_on:
+      - mediamtx
+    environment:
+      MEDIAMTX_HOST: mediamtx
+      STREAM_PATH: demo-jalur
+      CAMERA_LABEL: "JALUR KENDARAAN"
+      MEDIA_FILE: /media/jalur.mp4
+
+  demo-camera-parkiran:
+    build: ./demo-camera
+    restart: unless-stopped
+    depends_on:
+      - mediamtx
+    environment:
+      MEDIAMTX_HOST: mediamtx
+      STREAM_PATH: demo-parkiran
+      CAMERA_LABEL: "PARKIRAN TRUK"
+      MEDIA_FILE: /media/parkiran.png
+
+  reverse-proxy:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    volumes:
+      - ./reverse-proxy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+      - frontend
+      - keycloak
+      - mediamtx
+    ports:
+      - "80:80"
+
+volumes:
+  pgdata:
+  kcpgdata:
+  mailpitdata:
+  miniodata:
