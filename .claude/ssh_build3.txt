@@ -1,0 +1,87 @@
+=== exit code: 1 ===
+
+--- STDERR ---
+ Image bluenviron/mediamtx:1.21.0 Pulling 
+ Image nginx:1.27-alpine Pulling 
+ Image minio/minio:RELEASE.2024-10-13T13-34-11Z Pulling 
+ Image quay.io/keycloak/keycloak:26.7.3 Pulling 
+ Image axllent/mailpit:v1.31.1 Pulling 
+ 98f723fd4b74 Pulling fs layer 0B
+ ea600cbab077 Pulling fs layer 0B
+ 98f723fd4b74 Downloading 6.5MB
+ 98f723fd4b74 Download complete 0B
+ 98f723fd4b74 Extracting 1B
+ 98f723fd4b74 Extracting 1B
+ 98f723fd4b74 Extracting 1B
+ ea600cbab077 Downloading 1.049MB
+ 98f723fd4b74 Extracting 1B
+ ea600cbab077 Downloading 2.834MB
+ 98f723fd4b74 Extracting 1B
+ ea600cbab077 Download complete 0B
+ 98f723fd4b74 Extracting 1B
+ 98f723fd4b74 Extracting 1B
+ 98f723fd4b74 Extracting 1B
+ 98f723fd4b74 Extracting 1B
+ 98f723fd4b74 Extracting 1B
+ 98f723fd4b74 Extracting 1B
+ 98f723fd4b74 Extracting 2B
+ 98f723fd4b74 Extracting 2B
+ 98f723fd4b74 Extracting 2B
+ 98f723fd4b74 Extracting 2B
+ 98f723fd4b74 Extracting 2B
+ 98f723fd4b74 Extracting 2B
+ 98f723fd4b74 Extracting 2B
+ 98f723fd4b74 Extracting 2B
+ 98f723fd4b74 Extracting 2B
+ 98f723fd4b74 Extracting 2B
+ 98f723fd4b74 Extracting 3B
+ 98f723fd4b74 Extracting 3B
+ 98f723fd4b74 Extracting 3B
+ 98f723fd4b74 Extracting 3B
+ 98f723fd4b74 Extracting 3B
+ 98f723fd4b74 Extracting 3B
+ 98f723fd4b74 Extracting 3B
+ 98f723fd4b74 Extracting 3B
+ 98f723fd4b74 Extracting 3B
+ 98f723fd4b74 Extracting 3B
+ 98f723fd4b74 Extracting 4B
+ 98f723fd4b74 Extracting 4B
+ 98f723fd4b74 Extracting 4B
+ 98f723fd4b74 Extracting 4B
+ 98f723fd4b74 Extracting 4B
+ 98f723fd4b74 Extracting 4B
+ 98f723fd4b74 Extracting 4B
+ 98f723fd4b74 Extracting 4B
+ 98f723fd4b74 Extracting 4B
+ 98f723fd4b74 Extracting 4B
+ 98f723fd4b74 Extracting 5B
+ 98f723fd4b74 Extracting 5B
+ 98f723fd4b74 Extracting 5B
+ 98f723fd4b74 Extracting 5B
+ 98f723fd4b74 Extracting 5B
+ 98f723fd4b74 Extracting 5B
+ 98f723fd4b74 Extracting 5B
+ 98f723fd4b74 Extracting 5B
+ 98f723fd4b74 Extracting 5B
+ 98f723fd4b74 Extracting 5B
+ 98f723fd4b74 Extracting 6B
+ 98f723fd4b74 Extracting 6B
+ 98f723fd4b74 Extracting 6B
+ 98f723fd4b74 Extracting 6B
+ 98f723fd4b74 Extracting 6B
+ 98f723fd4b74 Extracting 6B
+ 98f723fd4b74 Extracting 6B
+ 98f723fd4b74 Extracting 6B
+ 98f723fd4b74 Extracting 6B
+ 98f723fd4b74 Extracting 7B
+ 98f723fd4b74 Extracting 7B
+ 98f723fd4b74 Extracting 7B
+ 98f723fd4b74 Extracting 7B
+ 98f723fd4b74 Extracting 7B
+ 98f723fd4b74 Extracting 7B
+ 98f723fd4b74 Extracting 7B
+ 98f723fd4b74 Extracting 7B
+ Image minio/minio:RELEASE.2024-10-13T13-34-11Z Error failed to resolve reference "docker.io/minio/minio:RELEASE.2024-10-13T13-34-11Z": docker.io/minio/minio:RELEASE.2024-10-13T13-34-11Z: not found
+Error response from daemon: failed to resolve reference "docker.io/minio/minio:RELEASE.2024-10-13T13-34-11Z": docker.io/minio/minio:RELEASE.2024-10-13T13-34-11Z: not found
+
+--- EXIT CODE: 0 ---

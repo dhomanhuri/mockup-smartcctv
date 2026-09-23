@@ -1,0 +1,36 @@
+=== force TLSv1.2 ===
+* ALPN, offering http/1.1
+*  CAfile: /etc/ssl/certs/ca-certificates.crt
+*  CApath: /etc/ssl/certs
+* TLSv1.0 (OUT), TLS header, Certificate Status (22):
+} [5 bytes data]
+* TLSv1.2 (OUT), TLS handshake, Client hello (1):
+} [224 bytes data]
+  0     0    0     0    0     0      0      0 --:--:--  0:00:01 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:02 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:03 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:04 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:06 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:07 --:--:--     0* OpenSSL SSL_connect: Connection reset by peer in connection to auth.docker.io:443 
+  0     0    0     0    0     0      0      0 --:--:--  0:00:07 --:--:--     0
+* Closing connection 0
+* TLSv1.0 (OUT), TLS header, Unknown (21):
+} [5 bytes data]
+* TLSv1.2 (OUT), TLS alert, decode error (562):
+} [2 bytes data]
+curl: (35) OpenSSL SSL_connect: Connection reset by peer in connection to auth.docker.io:443 
+=== force IPv4 ===
+* ALPN, offering http/1.1
+*  CAfile: /etc/ssl/certs/ca-certificates.crt
+*  CApath: /etc/ssl/certs
+* TLSv1.0 (OUT), TLS header, Certificate Status (22):
+} [5 bytes data]
+* TLSv1.3 (OUT), TLS handshake, Client hello (1):
+} [512 bytes data]
+  0     0    0     0    0     0      0      0 --:--:--  0:00:01 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:02 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:03 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:04 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:05 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:06 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:07 --:--:--     0* OpenSSL SSL_connect: Connection reset by peer in connection to auth.docker.io:443 
+  0     0    0     0    0     0      0      0 --:--:--  0:00:07 --:--:--     0
+* Closing connection 0
+* TLSv1.0 (OUT), TLS header, Unknown (21):
+} [5 bytes data]
+* TLSv1.3 (OUT), TLS alert, decode error (562):
+} [2 bytes data]
+curl: (35) OpenSSL SSL_connect: Connection reset by peer in connection to auth.docker.io:443 
+=== retry docker pull nginx small ===
+Error response from daemon: failed to resolve reference "docker.io/library/nginx:1.27-alpine": failed to authorize: failed to fetch anonymous token: Get "https://auth.docker.io/token?scope=repository%3Alibrary%2Fnginx%3Apull&service=registry.docker.io": read tcp 202.91.30.242:36136->172.64.144.78:443: read: connection reset by peer
+
+--- EXIT CODE: 0 ---

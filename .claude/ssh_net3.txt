@@ -1,0 +1,32 @@
+=== github.com https (already worked for git clone) ===
+HTTP/2 200 
+date: Wed, 23 Sep 2026 08:45:51 GMT
+content-type: text/html; charset=utf-8
+=== ghcr.io (github container registry) ===
+HTTP/2 405 
+content-type: application/json
+docker-distribution-api-version: registry/2.0
+=== quay.io ===
+HTTP/2 401 
+date: Wed, 23 Sep 2026 08:46:14 GMT
+content-type: text/html; charset=utf-8
+=== docker.io main site (not auth) ===
+=== try auth.docker.io via --resolve to registry-1 IP ===
+=== openssl s_client test ===
+write:errno=104
+CONNECTED(00000003)
+---
+no peer certificate available
+---
+No client certificate CA names sent
+---
+SSL handshake has read 0 bytes and written 316 bytes
+Verification: OK
+---
+New, (NONE), Cipher is (NONE)
+Secure Renegotiation IS NOT supported
+Compression: NONE
+Expansion: NONE
+No ALPN negotiated
+
+--- EXIT CODE: 0 ---

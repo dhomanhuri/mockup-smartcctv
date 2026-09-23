@@ -84,7 +84,10 @@ services:
   # this over the docker network instead (see MINIO_* on the `backend`
   # service in apps/docker-compose.yml).
   minio:
-    image: minio/minio:RELEASE.2024-10-13T13-34-11Z
+    # quay.io is MinIO's own primary registry for this image (the
+    # docker.io/minio/minio mirror lags behind and can 404 on recent tags
+    # depending on which pull-through cache/mirror handles the request).
+    image: quay.io/minio/minio:RELEASE.2024-10-13T13-34-11Z
     restart: unless-stopped
     command: server /data --console-address ":9090"
     environment:

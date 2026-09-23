@@ -1,0 +1,8 @@
+=== test mirror.gcr.io manifest fetch for nginx ===
+{"errors":[{"code":"MANIFEST_UNKNOWN","message":"Manifest has media type \"application/vnd.oci.image.index.v1+json\" but client accepts [\"application/vnd.docker.distribution.manifest.v2+json\"]"}]}
+
+=== docker version (need daemon.json edit capability) ===
+29.7.2
+SUDO_OK
+
+--- EXIT CODE: 0 ---
