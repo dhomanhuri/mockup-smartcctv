@@ -22,7 +22,15 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       KEYCLOAK_INTERNAL_URL: http://keycloak:8080/auth
       KEYCLOAK_REALM: ${KEYCLOAK_REALM}
-      KEYCLOAK_ISSUER: http://${KC_HOSTNAME}/auth/realms/${KEYCLOAK_REALM}
+      # Scheme defaults to http (the original LAN demo has no TLS at the
+      # edge); a deployment sitting behind an HTTPS-terminating reverse
+      # proxy (e.g. system nginx + certbot) must set KC_ISSUER_SCHEME=https
+      # in .env so this matches the issuer Keycloak itself puts in the JWT
+      # (which it derives from KC_HOSTNAME + the X-Forwarded-Proto it's
+      # told to trust via KC_PROXY_HEADERS) — a mismatch here 401s every
+      # login at the backend's issuer check even though Keycloak's own
+      # login page works fine.
+      KEYCLOAK_ISSUER: ${KC_ISSUER_SCHEME:-http}://${KC_HOSTNAME}/auth/realms/${KEYCLOAK_REALM}
       MEDIAMTX_API_URL: http://mediamtx:9997
       KC_USER_MANAGER_CLIENT_ID: ${KC_USER_MANAGER_CLIENT_ID}
       KC_USER_MANAGER_SECRET: ${KC_USER_MANAGER_SECRET}

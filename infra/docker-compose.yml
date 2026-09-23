@@ -179,7 +179,11 @@ services:
       - keycloak
       - mediamtx
     ports:
-      - "80:80"
+      # Host port is configurable (default 80) so this can sit behind an
+      # existing system nginx/Apache that already owns 80/443 on a shared
+      # host — set APP_HTTP_PORT in .env to the free port that host's own
+      # reverse proxy forwards to instead.
+      - "${APP_HTTP_PORT:-80}:80"
 
 volumes:
   pgdata:

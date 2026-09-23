@@ -40,8 +40,8 @@
       "directAccessGrantsEnabled": true,
       "implicitFlowEnabled": false,
       "serviceAccountsEnabled": false,
-      "redirectUris": ["http://192.168.56.199/*", "http://localhost/*"],
-      "webOrigins": ["http://192.168.56.199", "http://localhost"],
+      "redirectUris": ["http://192.168.56.199/*", "http://localhost/*", "https://cctv.dhomanhuri.id/*"],
+      "webOrigins": ["http://192.168.56.199", "http://localhost", "https://cctv.dhomanhuri.id"],
       "fullScopeAllowed": true,
       "attributes": {
         "pkce.code.challenge.method": "S256"
